@@ -61,11 +61,10 @@ static int store_pem(ENACT_PEM *pem, const char *filename)
 
     if(pem != NULL && filename != NULL) {
         XFILE fp = NULL;
-        size_t fileSize = 0;
 
         fp = XFOPEN(filename, "wt");
         if(fp != XBADFILE) {
-            fileSize = XFWRITE(pem->key, 1, pem->size, fp);
+            size_t fileSize = XFWRITE(pem->key, 1, pem->size, fp);
             if(fileSize == pem->size) {
                 if(verbose) printf("Successfully stored to %s.\n", filename);
                 ret = ENACT_SUCCESS;
@@ -83,17 +82,16 @@ static int store_pem(ENACT_PEM *pem, const char *filename)
 size_t pem_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
     if(UUID_V4_SIZE == (size * nmemb)) {
-        int i;
         XFILE fp = NULL;
-        size_t fileSize = 0;
 
         fp = XFOPEN(ENACT_NODEID_TEMPFILE, "wt");
         if(fp != XBADFILE) {
-            fileSize = XFWRITE(ptr, 1, (size * nmemb), fp);
+            size_t fileSize = XFWRITE(ptr, 1, (size * nmemb), fp);
             if(fileSize == size) {
+                int i;
                 printf("New NodeID is:\n");
                 for(i=0;  i<nmemb; i++) {
-                putchar(ptr[i]);
+                    putchar(ptr[i]);
                 }
                 putchar('\n');
                 if(verbose) printf("Successfully stored nodeID.\n");
@@ -282,14 +280,15 @@ int agent_sentEvidence(CURL *curl)
 
 int fs_listFiles(ENACT_FILES *files)
 {
-    int i, namelen, ret = ENACT_SUCCESS;
+    int i, ret = ENACT_ERROR;
     struct dirent *dir;
     DIR *d;
 
-    d = opendir("../demo");
+    files->count = 0;
+
+    d = opendir(ENACT_DEMO_PATH);
     if(d != NULL) {
         if(verbose) printf("Listing all files in current directory\n");
-        files->count = 0;
         for(i = 0; i < MAX_FILE_COUNT; i++) {
             dir = readdir(d);
             if(dir == NULL) {
@@ -297,36 +296,35 @@ int fs_listFiles(ENACT_FILES *files)
                 break;
             }
             /* Interested only in regular files */
-            namelen = strlen(dir->d_name) + 1;
-            if(dir->d_type == DT_REG && namelen < MAX_FILE_NAME) {
+            if(dir->d_type == DT_REG) {
                 if(verbose) printf("\tFound %s\n", dir->d_name);
-                strncpy(files->name[i], "../demo/", 9);
-                strncat(files->name[i], dir->d_name, namelen);
+                strncpy(files->name[i], ENACT_DEMO_PATH, sizeof(files->name[i]));
+                strncat(files->name[i], dir->d_name, sizeof(files->name[i])-sizeof(ENACT_DEMO_PATH));
                 files->count++;
             }
             else {
                 if(verbose) printf("\tSkipping %s\n", dir->d_name);
                 i--;
             }
-
-#if 0
-            /* Special case: protect Linux user list */
-            strncpy(files->name[i], "/etc/passwd", 12);
-            files->count++;
-#endif
         }
     }
     else {
-        if(verbose) printf("Unable to open directory\n");
-        ret = ENACT_ERROR;
+        if(verbose) printf("Unable to open directory. Protecting /etc/passwd\n");
+        /* Special case: protect Linux user list */
+        strncpy(files->name[0], ENACT_DEMO_FILE, sizeof(files->name[0]));
+        files->count++;
     }
 
-#ifdef DEBUG_VERBOSE
-    printf("List of regular files(%d):\n", files->count);
-    for(int i = 0; i < files->count; i++) {
-        printf("%s \n", files->name[i]);
+    if(verbose) {
+        printf("List of regular files(%d):\n", files->count);
+        for(int i = 0; i < files->count; i++) {
+           printf("%s \n", files->name[i]);
+        }
     }
-#endif
+
+    if(files->count > 0) {
+        ret = ENACT_SUCCESS;
+    }
 
     return ret;
 }
@@ -335,7 +333,7 @@ int fs_listFiles(ENACT_FILES *files)
 int fs_storeQuote(ENACT_EVIDENCE *attested)
 {
     int ret = ENACT_ERROR;
-    int size = 0;
+    int fileSize, retSize, expectedSize;
     FILE *fp;
     BYTE hash[TPM_SHA256_DIGEST_SIZE];
     wc_Sha256 sha256;
@@ -343,25 +341,28 @@ int fs_storeQuote(ENACT_EVIDENCE *attested)
     wc_InitSha256(&sha256);
     wc_Sha256Update(&sha256, attested->raw.attestationData, attested->raw.size);
     wc_Sha256Final(&sha256, hash);
-#ifdef DEBUG_VERBOSE
-    printf("TPMS_ATTEST HASH:\n");
-    TPM2_PrintBin(hash, sizeof(hash));
-#endif
 
+    retSize = expectedSize = 0;
     fp = XFOPEN(ENACT_QUOTE_FILENAME, "wb");
     if(fp != XBADFILE) {
-        size = sizeof(attested->raw.size);
-        ret = XFWRITE((BYTE*)&attested->raw.size, 1, size, fp);
-        size = (int)attested->raw.size;
-        ret = XFWRITE(attested->raw.attestationData, 1, size, fp);
-        if(verbose) printf("store TPM2B_ATTEST total size = %d\n", size);
+        fileSize = sizeof(attested->raw.size);
+        expectedSize = sizeof(attested->raw.size);
+        ret = XFWRITE((BYTE*)&attested->raw.size, 1, fileSize, fp);
+        retSize = ret;
+
+        fileSize = (int)attested->raw.size;
+        expectedSize += attested->raw.size;
+        ret = XFWRITE(attested->raw.attestationData, 1, fileSize, fp);
+        retSize += ret;
+
+        if(verbose) printf("store TPM2B_ATTEST total size = %d\n", expectedSize);
         XFCLOSE(fp);
     }
     else {
         if(verbose) printf("Unable to open file");
     }
 
-    if(ret == size) {
+    if(expectedSize == retSize) {
         if(verbose) printf("Evidence stored to file.\n");
         ret = ENACT_SUCCESS;
     }
@@ -372,29 +373,42 @@ int fs_storeQuote(ENACT_EVIDENCE *attested)
 int fs_storeSign(ENACT_EVIDENCE *attested)
 {
     UINT16 ret = ENACT_ERROR;
-    UINT16 fileSize = 0;
+    UINT16 fileSize, retSize, expectedSize;
     BYTE *buffer = NULL;
     FILE *fp = NULL;
 
+    retSize = expectedSize = 0;
     fp = XFOPEN(ENACT_SIGNATURE_FILENAME, "wb");
     if(fp != XBADFILE) {
         /* R part of ECC signature */
-        fileSize = attested->signature.signature.ecdsa.signatureR.size;
-        ret = XFWRITE(&fileSize, 1, sizeof(fileSize), fp);
+        fileSize = sizeof(attested->signature.signature.ecdsa.signatureR.size);
+        expectedSize = fileSize;
+        ret = XFWRITE(&fileSize, 1, fileSize, fp);
+        retSize = ret;
+
         buffer = attested->signature.signature.ecdsa.signatureR.buffer;
+        fileSize = attested->signature.signature.ecdsa.signatureR.size;
+        expectedSize += fileSize;
         ret = XFWRITE(buffer, 1, fileSize, fp);
+        retSize += ret;
         /* S part of ECC signature */
-        fileSize = attested->signature.signature.ecdsa.signatureS.size;
-        ret = XFWRITE(&fileSize, 1, sizeof(fileSize), fp);
+        fileSize = sizeof(attested->signature.signature.ecdsa.signatureS.size);
+        expectedSize += fileSize;
+        ret = XFWRITE(&fileSize, 1, fileSize, fp);
+        retSize += ret;
+
         buffer = attested->signature.signature.ecdsa.signatureS.buffer;
+        fileSize = attested->signature.signature.ecdsa.signatureS.size;
+        expectedSize += fileSize;
         ret = XFWRITE(buffer, 1, fileSize, fp);
+        retSize += ret;
         XFCLOSE(fp);
     }
     else {
         if(verbose) printf("Unable to open file");
     }
 
-    if(ret == fileSize) {
+    if(expectedSize == retSize) {
         if(verbose) printf("Signature stored to file.\n");
         ret = ENACT_SUCCESS;
     }
