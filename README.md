@@ -1,5 +1,7 @@
 # EnactTrust agent
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/26a8a4bcbdb3441785ec402f808851bb)](https://app.codacy.com/gh/EnactTrust/enact?utm_source=github.com&utm_medium=referral&utm_content=EnactTrust/enact&utm_campaign=Badge_Grade_Settings)
+
 _Open-source software that enables you to monitor the health of your system_
 
 ## How it works
