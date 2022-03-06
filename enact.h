@@ -46,7 +46,9 @@
 #define ENACT_EKRAW_FILENAME "ek.pub\0"
 #define ENACT_EKPEM_FILENAME "ek.pem\0"
 #define ENACT_SIGNATURE_FILENAME "signature.blob\0"
-#define ENACT_NODEID_TEMPFILE "node.id"
+#define ENACT_NODEID_TEMPFILE "node.id\0"
+#define ENACT_DEMO_PATH "../demo/\0"    /* Quick start protects this folder */
+#define ENACT_DEMO_FILE "/etc/passwd\0" /* Protect the Linux password file */
 
 /* EnactTrust defines for CI & testing */
 #define URL_WEBTEST     "http://ptsv2.com/t/t48o8-1645500358/post"

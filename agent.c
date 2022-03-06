@@ -280,13 +280,13 @@ int agent_sentEvidence(CURL *curl)
 
 int fs_listFiles(ENACT_FILES *files)
 {
-    int i, namelen, ret = ENACT_SUCCESS;
+    int i, ret = ENACT_ERROR;
     struct dirent *dir;
     DIR *d;
 
     files->count = 0;
 
-    d = opendir("../demo");
+    d = opendir(ENACT_DEMO_PATH);
     if(d != NULL) {
         if(verbose) printf("Listing all files in current directory\n");
         for(i = 0; i < MAX_FILE_COUNT; i++) {
@@ -296,36 +296,35 @@ int fs_listFiles(ENACT_FILES *files)
                 break;
             }
             /* Interested only in regular files */
-            namelen = strlen(dir->d_name) + 1;
-            if(dir->d_type == DT_REG && namelen < MAX_FILE_NAME) {
+            if(dir->d_type == DT_REG) {
                 if(verbose) printf("\tFound %s\n", dir->d_name);
-                strncpy(files->name[i], "../demo/", 9);
-                strncat(files->name[i], dir->d_name, namelen);
+                strncpy(files->name[i], ENACT_DEMO_PATH, sizeof(files->name[i]));
+                strncat(files->name[i], dir->d_name, sizeof(files->name[i])-sizeof(ENACT_DEMO_PATH));
                 files->count++;
             }
             else {
                 if(verbose) printf("\tSkipping %s\n", dir->d_name);
                 i--;
             }
-
-#if 0
-            /* Special case: protect Linux user list */
-            strncpy(files->name[i], "/etc/passwd", 12);
-            files->count++;
-#endif
         }
     }
     else {
-        if(verbose) printf("Unable to open directory\n");
-        ret = ENACT_ERROR;
+        if(verbose) printf("Unable to open directory. Protecting /etc/passwd\n");
+        /* Special case: protect Linux user list */
+        strncpy(files->name[0], ENACT_DEMO_FILE, sizeof(files->name[0]));
+        files->count++;
     }
 
-#ifdef DEBUG_VERBOSE
-    printf("List of regular files(%d):\n", files->count);
-    for(int i = 0; i < files->count; i++) {
-        printf("%s \n", files->name[i]);
+    if(verbose) {
+        printf("List of regular files(%d):\n", files->count);
+        for(int i = 0; i < files->count; i++) {
+           printf("%s \n", files->name[i]);
+        }
     }
-#endif
+
+    if(files->count > 0) {
+        ret = ENACT_SUCCESS;
+    }
 
     return ret;
 }
@@ -342,10 +341,6 @@ int fs_storeQuote(ENACT_EVIDENCE *attested)
     wc_InitSha256(&sha256);
     wc_Sha256Update(&sha256, attested->raw.attestationData, attested->raw.size);
     wc_Sha256Final(&sha256, hash);
-#ifdef DEBUG_VERBOSE
-    printf("TPMS_ATTEST HASH:\n");
-    TPM2_PrintBin(hash, sizeof(hash));
-#endif
 
     retSize = expectedSize = 0;
     fp = XFOPEN(ENACT_QUOTE_FILENAME, "wb");
