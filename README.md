@@ -16,6 +16,8 @@ Note: The process of providing evidence about the system health is called attest
 
 Until today, this technology has been leveraged only by large enterprise. Now, thanks to EnactTrust, everyone can use attestation technology to improve their system security.
 
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/6129df878b364f9ca7c09d72ffe852bf)](https://www.codacy.com/gh/EnactTrust/enact/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=EnactTrust/enact&amp;utm_campaign=Badge_Grade)
+
 ### Installation
 
 Please check the INSTALL.md file for step by step instructions.
