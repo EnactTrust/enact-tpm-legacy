@@ -386,11 +386,22 @@ int fs_storeSign(ENACT_EVIDENCE *attested)
     retSize = expectedSize = 0;
     fp = XFOPEN(ENACT_SIGNATURE_FILENAME, "wb");
     if(fp != XBADFILE) {
+        /* Store signature and hash algorithm */
+        fileSize = sizeof(attested->signature.sigAlg);
+        expectedSize += fileSize;
+        ret = XFWRITE(&attested->signature.sigAlg, 1, fileSize, fp);
+        retSize += ret;
+
+        fileSize = sizeof(attested->signature.signature.ecdsa.hash);
+        expectedSize += fileSize;
+        ret = XFWRITE(&attested->signature.signature.ecdsa.hash, 1, fileSize, fp);
+        retSize += ret;
+
         /* R part of ECC signature */
         fileSize = sizeof(attested->signature.signature.ecdsa.signatureR.size);
-        expectedSize = fileSize;
-        ret = XFWRITE(&fileSize, 1, fileSize, fp);
-        retSize = ret;
+        expectedSize += fileSize;
+        ret = XFWRITE(&attested->signature.signature.ecdsa.signatureR.size, 1, fileSize, fp);
+        retSize += ret;
 
         buffer = attested->signature.signature.ecdsa.signatureR.buffer;
         fileSize = attested->signature.signature.ecdsa.signatureR.size;
@@ -400,7 +411,7 @@ int fs_storeSign(ENACT_EVIDENCE *attested)
         /* S part of ECC signature */
         fileSize = sizeof(attested->signature.signature.ecdsa.signatureS.size);
         expectedSize += fileSize;
-        ret = XFWRITE(&fileSize, 1, fileSize, fp);
+        ret = XFWRITE(&attested->signature.signature.ecdsa.signatureS.size, 1, fileSize, fp);
         retSize += ret;
 
         buffer = attested->signature.signature.ecdsa.signatureS.buffer;
