@@ -12,7 +12,7 @@ LDLIBS = -lwolftpm -lwolfssl -lm -pthread -lcurl
 
 .PHONY: all
 all:
-	$(CC) $(CFLAGS) -o enact agent.c tpm.c $(LDFLAGS) $(LDLIBS)
+	$(CC) $(CFLAGS) -o enact agent.c tpm.c misc.c $(LDFLAGS) $(LDLIBS)
 
 .PHONY: clean
 clean:

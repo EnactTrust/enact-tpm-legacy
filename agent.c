@@ -22,6 +22,7 @@
 
 #include "enact.h"
 #include "tpm.h"
+#include "misc.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -33,6 +34,7 @@
 int EnactAgent(ENACT_EVIDENCE *data, ENACT_FILES *files, ENACT_TPM *tpm, int onboard);
 
 static char uid[UUID_V4_SIZE];
+static char nodeid[UUID_V4_SIZE];
 
 /* EnactTrust has four tiers:
  *
@@ -57,9 +59,36 @@ static int verbose = 1;
 static int verbose = 0;
 #endif /* DEBUG_PRINTS */
 
+static int read_nodeid(ENACT_EVIDENCE *evidence, const char *filename)
+{
+    int ret = ENACT_ERROR;
+
+    if(evidence != NULL && filename != NULL) {
+        XFILE fp = NULL;
+        int len = 0;
+
+        fp = XFOPEN(filename, "rb");
+        if(fp != XBADFILE) {
+            len = XFREAD((byte*)&nodeid, 1, sizeof(nodeid), fp);
+            if(len == sizeof(nodeid)) {
+                misc_uuid_str2bin(nodeid, sizeof(nodeid), evidence->nodeid,
+                                  sizeof(evidence->nodeid));
+                ret = ENACT_SUCCESS;
+            }
+        }
+        TPM2_PrintBin((byte*)nodeid, len);
+        TPM2_PrintBin((byte*)evidence->nodeid, sizeof(evidence->nodeid));
+    }
+    else {
+        ret = BAD_ARG;
+    }
+
+    return ret;
+}
+
 static int store_pem(ENACT_PEM *pem, const char *filename)
 {
-    int ret = ENACT_FAILURE;
+    int ret = ENACT_ERROR;
 
     if(pem != NULL && filename != NULL) {
         XFILE fp = NULL;
@@ -85,6 +114,9 @@ size_t pem_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
     if(UUID_V4_SIZE == (size * nmemb)) {
         XFILE fp = NULL;
+
+        /* Store for use in Evidence later */
+        XMEMCPY((byte*)&nodeid, ptr, (size * nmemb));
 
         fp = XFOPEN(ENACT_NODEID_TEMPFILE, "wt");
         if(fp != XBADFILE) {
@@ -459,33 +491,38 @@ int EnactAgent(ENACT_EVIDENCE *attested, ENACT_FILES *files, ENACT_TPM *tpm, int
         /* Send AK & EK PEM for host identification */
         agent_onboarding(curl, tpm);
     }
+    else {
+        /* Read nodeID to prepare for use later, in evidence */
+        read_nodeid(attested, ENACT_NODEID_TEMPFILE);
+    }
 
     /* Evidence step */
     ret = tpm_pcrReset(ENACT_TPM_QUOTE_PCR);
-    if(ret) {
-        putchar('1');
-    }
     if(ret == ENACT_SUCCESS) {
         ret = tpm_pcrExtend(files, ENACT_TPM_QUOTE_PCR);
     }
     else {
-            putchar('2');
+        printf("Unable to prepare evidence\n");
     }
-    /* Ask the TPM to prepare an evidence */
+
     if(ret == ENACT_SUCCESS) {
+        /* Convert from string ot binary for use in Evidence later */
+        misc_uuid_str2bin(nodeid, sizeof(nodeid), attested->nodeid, sizeof(attested->nodeid));
+        /* Ask the TPM to prepare an evidence */
         ret = tpm_createQuote(tpm, attested);
     }
     else {
-        putchar('3');
+        printf("Unable to create evidence\n");
     }
     /* Store temporary artifacts */
     if(ret == ENACT_SUCCESS) {
         printf("Storing quote\n");
         ret = fs_storeQuote(attested);
-        if(ret) putchar('4');
         printf("Storing signature\n");
         ret |= fs_storeSign(attested);
-        if(ret) putchar('5');
+        if(ret) {
+            printf("Failed to store evidence\n");
+        }
     }
     /* Transfer golden or fresh evidence to the EnactTrust verifier */
     if(onboard) {
@@ -536,6 +573,9 @@ int main(int argc, char *argv[])
     ENACT_FILES files;
     ENACT_TPM tpm;
 
+    XMEMSET(uid, 0, sizeof(uid));
+    XMEMSET(nodeid, 0, sizeof(nodeid));
+
     /* Parse arguments */
     onboarding = setup = 0;
     if(argc >= 2) {
@@ -564,7 +604,7 @@ int main(int argc, char *argv[])
     /* Configure as a service, or execute an action */
     if(setup) {
         printf("Running as a Linux service is not implemented\n");
-        ret = ENACT_FAILURE; /* TODO */
+        ret = NOT_IMPLEMENTED; /* TODO */
     }
     else {
         ret = EnactAgent(&evidence, &files, &tpm, onboarding);

@@ -271,7 +271,10 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *attested)
     quoteCmd.signHandle = tpm->ak.handle.hndl;
     quoteCmd.inScheme.scheme = TPM_ALG_ECDSA;
     quoteCmd.inScheme.details.any.hashAlg = TPM_ALG_SHA256;
-    quoteCmd.qualifyingData.size = 0;
+    quoteCmd.qualifyingData.size = sizeof(attested->nodeid);
+    XMEMCPY((byte*)&quoteCmd.qualifyingData.buffer,
+            (byte*)&attested->nodeid,
+            quoteCmd.qualifyingData.size);
 
     wolfTPM2_SetAuthHandle(&tpm->dev, 0, &tpm->ak.handle);
     TPM2_SetupPCRSel(&quoteCmd.PCRselect, TPM_ALG_SHA256, ENACT_TPM_QUOTE_PCR);
