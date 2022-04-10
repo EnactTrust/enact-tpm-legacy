@@ -19,5 +19,17 @@
  * along with EnactTrust.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#ifndef _ENACT_MISC_H_
+#define _ENACT_MISC_H_
+
+#ifdef __cplusplus
+    extern "C" {
+#endif
 
 int misc_uuid_str2bin(const char *str, size_t str_size, char *bytes, size_t size);
+
+#ifdef __cplusplus
+    }
+#endif
+
+#endif /* _ENACT_MISC_H_ */

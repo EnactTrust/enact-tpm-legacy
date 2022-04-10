@@ -364,3 +364,8 @@ int tpm_exportEccPubToPem(ENACT_TPM *tpm, ENACT_PEM *pem, const char *filename)
 
     return ret;
 }
+
+void tpm_printError(int verbose, int ret)
+{
+    if(verbose) printf("TPM error 0x%x: %s\n", ret, TPM2_GetRCString(ret));
+}

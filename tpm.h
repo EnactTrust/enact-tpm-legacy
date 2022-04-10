@@ -19,6 +19,12 @@
  * along with EnactTrust.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#ifndef _ENACT_TPM_H_
+#define _ENACT_TPM_H_
+
+#ifdef __cplusplus
+    extern "C" {
+#endif
 
 int tpm_init(ENACT_TPM *tpm);
 int tpm_deinit(ENACT_TPM *tpm);
@@ -36,8 +42,10 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *attested);
 int tpm_exportEccPubToPem(ENACT_TPM *tpm, ENACT_PEM *pem, const char *filename);
 int tpm_exportRsaPubToPem(ENACT_TPM *tpm, ENACT_PEM *pem, const char *filename);
 
-inline void tpm_printError(int verbose, int ret)
-{
-    if(verbose) printf("TPM error 0x%x: %s\n", ret, TPM2_GetRCString(ret));
-}
+void tpm_printError(int verbose, int ret);
 
+#ifdef __cplusplus
+    }
+#endif
+
+#endif /* _ENACT_TPM_H_ */
