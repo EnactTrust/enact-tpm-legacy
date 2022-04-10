@@ -65,7 +65,7 @@ static int read_nodeid(ENACT_EVIDENCE *evidence, const char *filename)
 
     if(evidence != NULL && filename != NULL) {
         XFILE fp = NULL;
-        int len = 0;
+        int len;
 
         fp = XFOPEN(filename, "rb");
         if(fp != XBADFILE) {
