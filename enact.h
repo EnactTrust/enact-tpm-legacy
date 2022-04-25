@@ -32,10 +32,13 @@
 #define ENACT_SUCCESS        0
 #define ENACT_ERROR         -1
 #define ENACT_ERROR_START   -2
-#define ENACT_FAILURE       -127
+#define NOT_IMPLEMENTED     -127
 #define BAD_ARG             -128
 
-#define UUID_V4_SIZE 36
+#define UUID_V4_SIZE    36
+#define UUID_V4_CHARS   32
+#define UUID_V4_BYTES   16
+
 #define ENACT_TPM_QUOTE_PCR     23
 #define ENACT_TPM_HANDLE_SRK    0x81010010
 #define ENACT_TPM_HANDLE_AK     0x81010011
@@ -91,6 +94,7 @@ typedef struct ENACT_TPM {
 } ENACT_TPM;
 
 typedef struct ENACT_EVIDENCE {
+    char nodeid[UUID_V4_BYTES];
     TPM2B_ATTEST raw;
     TPMS_ATTEST data;
     TPMT_SIGNATURE signature;

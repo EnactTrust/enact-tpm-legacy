@@ -22,6 +22,7 @@
 
 #include "enact.h"
 #include "tpm.h"
+#include "misc.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -33,6 +34,7 @@
 int EnactAgent(ENACT_EVIDENCE *data, ENACT_FILES *files, ENACT_TPM *tpm, int onboard);
 
 static char uid[UUID_V4_SIZE];
+static char nodeid[UUID_V4_SIZE];
 
 /* EnactTrust has four tiers:
  *
@@ -57,9 +59,34 @@ static int verbose = 1;
 static int verbose = 0;
 #endif /* DEBUG_PRINTS */
 
+static int read_nodeid(ENACT_EVIDENCE *evidence, const char *filename)
+{
+    int ret = ENACT_ERROR;
+
+    if(evidence != NULL && filename != NULL) {
+        XFILE fp = NULL;
+        int len;
+
+        fp = XFOPEN(filename, "rb");
+        if(fp != XBADFILE) {
+            len = XFREAD((byte*)&nodeid, 1, sizeof(nodeid), fp);
+            if(len == sizeof(nodeid)) {
+                misc_uuid_str2bin(nodeid, sizeof(nodeid), evidence->nodeid,
+                                  sizeof(evidence->nodeid));
+                ret = ENACT_SUCCESS;
+            }
+        }
+    }
+    else {
+        ret = BAD_ARG;
+    }
+
+    return ret;
+}
+
 static int store_pem(ENACT_PEM *pem, const char *filename)
 {
-    int ret = ENACT_FAILURE;
+    int ret = ENACT_ERROR;
 
     if(pem != NULL && filename != NULL) {
         XFILE fp = NULL;
@@ -85,6 +112,9 @@ size_t pem_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
     if(UUID_V4_SIZE == (size * nmemb)) {
         XFILE fp = NULL;
+
+        /* Store for use in Evidence later */
+        XMEMCPY((byte*)&nodeid, ptr, (size * nmemb));
 
         fp = XFOPEN(ENACT_NODEID_TEMPFILE, "wt");
         if(fp != XBADFILE) {
@@ -336,29 +366,23 @@ int fs_listFiles(ENACT_FILES *files)
 }
 
 
-int fs_storeQuote(ENACT_EVIDENCE *attested)
+int fs_storeQuote(ENACT_EVIDENCE *evidence)
 {
     int ret = ENACT_ERROR;
     int fileSize, retSize, expectedSize;
     FILE *fp;
-    BYTE hash[TPM_SHA256_DIGEST_SIZE];
-    wc_Sha256 sha256;
-
-    wc_InitSha256(&sha256);
-    wc_Sha256Update(&sha256, attested->raw.attestationData, attested->raw.size);
-    wc_Sha256Final(&sha256, hash);
 
     retSize = expectedSize = 0;
     fp = XFOPEN(ENACT_QUOTE_FILENAME, "wb");
     if(fp != XBADFILE) {
-        fileSize = sizeof(attested->raw.size);
-        expectedSize = sizeof(attested->raw.size);
-        ret = XFWRITE((BYTE*)&attested->raw.size, 1, fileSize, fp);
+        fileSize = sizeof(evidence->raw.size);
+        expectedSize = sizeof(evidence->raw.size);
+        ret = XFWRITE((BYTE*)&evidence->raw.size, 1, fileSize, fp);
         retSize = ret;
 
-        fileSize = (int)attested->raw.size;
-        expectedSize += attested->raw.size;
-        ret = XFWRITE(attested->raw.attestationData, 1, fileSize, fp);
+        fileSize = (int)evidence->raw.size;
+        expectedSize += evidence->raw.size;
+        ret = XFWRITE(evidence->raw.attestationData, 1, fileSize, fp);
         retSize += ret;
 
         if(verbose) printf("store TPM2B_ATTEST total size = %d\n", expectedSize);
@@ -376,7 +400,7 @@ int fs_storeQuote(ENACT_EVIDENCE *attested)
     return ret;
 }
 
-int fs_storeSign(ENACT_EVIDENCE *attested)
+int fs_storeSign(ENACT_EVIDENCE *evidence)
 {
     UINT16 ret = ENACT_ERROR;
     UINT16 fileSize, retSize, expectedSize;
@@ -386,25 +410,36 @@ int fs_storeSign(ENACT_EVIDENCE *attested)
     retSize = expectedSize = 0;
     fp = XFOPEN(ENACT_SIGNATURE_FILENAME, "wb");
     if(fp != XBADFILE) {
-        /* R part of ECC signature */
-        fileSize = sizeof(attested->signature.signature.ecdsa.signatureR.size);
-        expectedSize = fileSize;
-        ret = XFWRITE(&fileSize, 1, fileSize, fp);
-        retSize = ret;
+        /* Store signature and hash algorithm */
+        fileSize = sizeof(evidence->signature.sigAlg);
+        expectedSize += fileSize;
+        ret = XFWRITE(&evidence->signature.sigAlg, 1, fileSize, fp);
+        retSize += ret;
 
-        buffer = attested->signature.signature.ecdsa.signatureR.buffer;
-        fileSize = attested->signature.signature.ecdsa.signatureR.size;
+        fileSize = sizeof(evidence->signature.signature.ecdsa.hash);
+        expectedSize += fileSize;
+        ret = XFWRITE(&evidence->signature.signature.ecdsa.hash, 1, fileSize, fp);
+        retSize += ret;
+
+        /* R part of ECC signature */
+        fileSize = sizeof(evidence->signature.signature.ecdsa.signatureR.size);
+        expectedSize += fileSize;
+        ret = XFWRITE(&evidence->signature.signature.ecdsa.signatureR.size, 1, fileSize, fp);
+        retSize += ret;
+
+        buffer = evidence->signature.signature.ecdsa.signatureR.buffer;
+        fileSize = evidence->signature.signature.ecdsa.signatureR.size;
         expectedSize += fileSize;
         ret = XFWRITE(buffer, 1, fileSize, fp);
         retSize += ret;
         /* S part of ECC signature */
-        fileSize = sizeof(attested->signature.signature.ecdsa.signatureS.size);
+        fileSize = sizeof(evidence->signature.signature.ecdsa.signatureS.size);
         expectedSize += fileSize;
-        ret = XFWRITE(&fileSize, 1, fileSize, fp);
+        ret = XFWRITE(&evidence->signature.signature.ecdsa.signatureS.size, 1, fileSize, fp);
         retSize += ret;
 
-        buffer = attested->signature.signature.ecdsa.signatureS.buffer;
-        fileSize = attested->signature.signature.ecdsa.signatureS.size;
+        buffer = evidence->signature.signature.ecdsa.signatureS.buffer;
+        fileSize = evidence->signature.signature.ecdsa.signatureS.size;
         expectedSize += fileSize;
         ret = XFWRITE(buffer, 1, fileSize, fp);
         retSize += ret;
@@ -422,7 +457,7 @@ int fs_storeSign(ENACT_EVIDENCE *attested)
     return ret;
 }
 
-int EnactAgent(ENACT_EVIDENCE *attested, ENACT_FILES *files, ENACT_TPM *tpm, int onboard)
+int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int onboard)
 {
     int ret = ENACT_ERROR;
     CURL *curl;
@@ -448,33 +483,38 @@ int EnactAgent(ENACT_EVIDENCE *attested, ENACT_FILES *files, ENACT_TPM *tpm, int
         /* Send AK & EK PEM for host identification */
         agent_onboarding(curl, tpm);
     }
+    else {
+        /* Read nodeID to prepare for use later, in evidence */
+        read_nodeid(evidence, ENACT_NODEID_TEMPFILE);
+    }
 
     /* Evidence step */
     ret = tpm_pcrReset(ENACT_TPM_QUOTE_PCR);
-    if(ret) {
-        putchar('1');
-    }
     if(ret == ENACT_SUCCESS) {
         ret = tpm_pcrExtend(files, ENACT_TPM_QUOTE_PCR);
     }
     else {
-            putchar('2');
+        printf("Unable to prepare evidence\n");
     }
-    /* Ask the TPM to prepare an evidence */
+
     if(ret == ENACT_SUCCESS) {
-        ret = tpm_createQuote(tpm, attested);
+        /* Convert from string ot binary for use in Evidence later */
+        misc_uuid_str2bin(nodeid, sizeof(nodeid), evidence->nodeid, sizeof(evidence->nodeid));
+        /* Ask the TPM to prepare an evidence */
+        ret = tpm_createQuote(tpm, evidence);
     }
     else {
-        putchar('3');
+        printf("Unable to create evidence\n");
     }
     /* Store temporary artifacts */
     if(ret == ENACT_SUCCESS) {
         printf("Storing quote\n");
-        ret = fs_storeQuote(attested);
-        if(ret) putchar('4');
+        ret = fs_storeQuote(evidence);
         printf("Storing signature\n");
-        ret |= fs_storeSign(attested);
-        if(ret) putchar('5');
+        ret |= fs_storeSign(evidence);
+        if(ret) {
+            printf("Failed to store evidence\n");
+        }
     }
     /* Transfer golden or fresh evidence to the EnactTrust verifier */
     if(onboard) {
@@ -525,6 +565,9 @@ int main(int argc, char *argv[])
     ENACT_FILES files;
     ENACT_TPM tpm;
 
+    XMEMSET(uid, 0, sizeof(uid));
+    XMEMSET(nodeid, 0, sizeof(nodeid));
+
     /* Parse arguments */
     onboarding = setup = 0;
     if(argc >= 2) {
@@ -553,7 +596,7 @@ int main(int argc, char *argv[])
     /* Configure as a service, or execute an action */
     if(setup) {
         printf("Running as a Linux service is not implemented\n");
-        ret = ENACT_FAILURE; /* TODO */
+        ret = NOT_IMPLEMENTED; /* TODO */
     }
     else {
         ret = EnactAgent(&evidence, &files, &tpm, onboarding);

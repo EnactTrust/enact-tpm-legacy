@@ -1,4 +1,4 @@
-/* tpm.h
+/* misc.h
  *
  * Copyright (C) 2018-2021 DesignFirst OU
  * Copyright (C) 2022 EnactTrust LTD
@@ -19,33 +19,17 @@
  * along with EnactTrust.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _ENACT_TPM_H_
-#define _ENACT_TPM_H_
+#ifndef _ENACT_MISC_H_
+#define _ENACT_MISC_H_
 
 #ifdef __cplusplus
     extern "C" {
 #endif
 
-int tpm_init(ENACT_TPM *tpm);
-int tpm_deinit(ENACT_TPM *tpm);
-
-int tpm_createEK(ENACT_TPM *tpm);
-int tpm_createSRK(ENACT_TPM *tpm);
-int tpm_createAK(ENACT_TPM *tpm);
-
-int tpm_pcrReset(UINT32 pcrIndex);
-int tpm_pcrRead(ENACT_EVIDENCE *tpm, UINT32 pcrIndex);
-int tpm_pcrExtend(ENACT_FILES *files, UINT32 pcrIndex);
-
-int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *attested);
-
-int tpm_exportEccPubToPem(ENACT_TPM *tpm, ENACT_PEM *pem, const char *filename);
-int tpm_exportRsaPubToPem(ENACT_TPM *tpm, ENACT_PEM *pem, const char *filename);
-
-void tpm_printError(int verbose, int ret);
+int misc_uuid_str2bin(const char *str, size_t str_size, char *bytes, size_t size);
 
 #ifdef __cplusplus
     }
 #endif
 
-#endif /* _ENACT_TPM_H_ */
+#endif /* _ENACT_MISC_H_ */
