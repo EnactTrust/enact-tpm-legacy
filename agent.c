@@ -213,7 +213,7 @@ int agent_onboarding(CURL *curl, ENACT_TPM *tpm)
         curl_mime_name(field, ENACT_API_PEM_ARG_UID);
         curl_mime_data(field, (const char *)uid, sizeof(uid));
 
-        curl_easy_setopt(curl, CURLOPT_URL, URL_WEBTEST);
+        curl_easy_setopt(curl, CURLOPT_URL, URL_NODE_PEM);
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, pem_callback);
 
@@ -254,7 +254,7 @@ int agent_sentGolden(CURL *curl)
         curl_mime_name(field, ENACT_API_GOLDEN_ARG_NODEID);
         curl_mime_filedata(field, ENACT_NODEID_TEMPFILE);
 
-        curl_easy_setopt(curl, CURLOPT_URL, URL_WEBTEST);
+        curl_easy_setopt(curl, CURLOPT_URL, URL_NODE_GOLDEN);
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
 
@@ -295,7 +295,7 @@ int agent_sentEvidence(CURL *curl)
         curl_mime_name(field, ENACT_API_EVIDENCE_ARG_NODEID);
         curl_mime_filedata(field, ENACT_NODEID_TEMPFILE);
 
-        curl_easy_setopt(curl, CURLOPT_URL, URL_WEBTEST);
+        curl_easy_setopt(curl, CURLOPT_URL, URL_NODE_EVIDENCE);
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
 
@@ -567,6 +567,12 @@ int main(int argc, char *argv[])
 
     XMEMSET(uid, 0, sizeof(uid));
     XMEMSET(nodeid, 0, sizeof(nodeid));
+
+    printf("EnactTrust agent v%s\n", ENACT_VERSION_STRING);
+    printf("EnactTrust endpoints in use\n");
+    printf("Onboarding: %s\n", URL_NODE_PEM);
+    printf("Golden value: %s\n", URL_NODE_GOLDEN);
+    printf("Fresh evidence: %s\n", URL_NODE_EVIDENCE);
 
     /* Parse arguments */
     onboarding = setup = 0;

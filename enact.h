@@ -22,11 +22,15 @@
 #ifndef _ENACT_H_
 #define _ENACT_H_
 
+#include "enact_api.h"
 #include <wolftpm/tpm2_wrap.h>
 
 #ifdef __cplusplus
     extern "C" {
 #endif
+
+#define ENACT_VERSION_STRING "0.5.0"
+#define ENACT_VERSION_HEX 0x00005000
 
 /* Return codes */
 #define ENACT_SUCCESS        0
@@ -52,33 +56,6 @@
 #define ENACT_NODEID_TEMPFILE "node.id\0"
 #define ENACT_DEMO_PATH "../demo/\0"    /* Quick start protects this folder */
 #define ENACT_DEMO_FILE "/etc/passwd\0" /* Protect the Linux password file */
-
-/* EnactTrust defines for CI & testing */
-#define URL_WEBTEST     "http://ptsv2.com/t/t48o8-1645500358/post"
-#define URL_LOCALHOST   "http://localhost:8000/"
-#define URL_LOCALHOST_NODE_PEM      "http://localhost:8000/node/pem"
-#define URL_LOCALHOST_NODE_GOLDEN   "http://localhost:8000/node/golden"
-#define URL_LOCALHOST_NODE_EVIDENCE "http://localhost:8000/node/evidence"
-
-/* EnactTrust & Veraison API as decsribed in the api-integration UML diagram */
-#define ENACT_BACKEND       "http://a3s.enacttrust.com/"
-#define ENACT_API_PEM       "node/pem"
-#define ENACT_API_SECRET    "node/secret"
-#define ENACT_API_GOLDEN    "node/golden"
-#define ENACT_API_EVIDENCE  "node/evidence"
-
-#define ENACT_API_PEM_ARG_AK    "ak_pub"
-#define ENACT_API_PEM_ARG_EK    "ek_pub"
-#define ENACT_API_PEM_ARG_AKNAME "ak_name"
-#define ENACT_API_PEM_ARG_UID   "user_id"
-
-#define ENACT_API_GOLDEN_ARG_GOLDEN "golden_blob"
-#define ENACT_API_GOLDEN_ARG_SIGN   "signature_blob"
-#define ENACT_API_GOLDEN_ARG_NODEID "node_id"
-
-#define ENACT_API_EVIDENCE_ARG_EVIDENCE "evidence_blob"
-#define ENACT_API_EVIDENCE_ARG_SIGN     ENACT_API_GOLDEN_ARG_SIGN
-#define ENACT_API_EVIDENCE_ARG_NODEID   ENACT_API_GOLDEN_ARG_NODEID
 
 #define MAX_FILE_COUNT 20
 #define MAX_FILE_NAME 100
