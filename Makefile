@@ -1,6 +1,5 @@
 CC=gcc
-CFLAGS = -Wall -I/usr/local/include
-LDFLAGS = -L/usr/local/lib
+CFLAGS = -Wall
 LDLIBS = -lwolftpm -lwolfssl -lm -pthread -lcurl
 
 #Debug Level 1
