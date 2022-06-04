@@ -9,6 +9,9 @@ LDLIBS = -lwolftpm -lwolfssl -lm -pthread -lcurl
 #Debug Level 3
 #CFLAGS += -g -O0 -DDEBUG_PRINTS -DDEBUG_VERBOSE
 
+# Enable TPM GPIO support
+CFLAGS += -DENACT_TPM_GPIO_ENABLE
+
 .PHONY: all
 all:
 	$(CC) $(CFLAGS) -o enact agent.c tpm.c misc.c $(LDFLAGS) $(LDLIBS)

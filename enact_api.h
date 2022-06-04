@@ -31,10 +31,13 @@
 #define ENACT_API_SECRET    "node/secret"
 #define ENACT_API_GOLDEN    "node/golden"
 #define ENACT_API_EVIDENCE  "node/evidence"
+#define ENACT_API_EKCERT    "node/tpmekcert"
+#define ENACT_API_GPIOEVID  "node/tpmgpio"
 
 #define ENACT_API_PEM_ARG_AK    "ak_pub"
 #define ENACT_API_PEM_ARG_EK    "ek_pub"
 #define ENACT_API_PEM_ARG_AKNAME "ak_name"
+#define ENACT_API_PEM_ARG_EKCERT "ek_cert"
 #define ENACT_API_PEM_ARG_UID   "user_id"
 
 #define ENACT_API_GOLDEN_ARG_GOLDEN "golden_blob"
@@ -55,10 +58,18 @@
 #define URL_BACKEND_NODE_PEM        ENACT_BACKEND ENACT_API_PEM
 #define URL_BACKEND_NODE_GOLDEN     ENACT_BACKEND ENACT_API_GOLDEN
 #define URL_BACKEND_NODE_EVIDENCE   ENACT_BACKEND ENACT_API_EVIDENCE
+#define URL_BACKEND_NODE_EKCERT     ENACT_BACKEND ENACT_API_EKCERT
+#define URL_BACKEND_NODE_GPIOEVID   ENACT_BACKEND ENACT_API_GPIOEVID
 
 /* Endpoints in use */
 #define URL_NODE_PEM        URL_BACKEND_NODE_PEM
 #define URL_NODE_GOLDEN     URL_BACKEND_NODE_GOLDEN
 #define URL_NODE_EVIDENCE   URL_BACKEND_NODE_EVIDENCE
+#define URL_NODE_EKCERT     URL_BACKEND_NODE_EKCERT
+#define URL_NODE_GPIOEVID   URL_BACKEND_NODE_GPIOEVID
+
+#ifdef __cplusplus
+    }
+#endif
 
 #endif /* _ENACT_API_H_ */

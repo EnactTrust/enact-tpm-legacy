@@ -26,6 +26,8 @@
     extern "C" {
 #endif
 
+void tpm_printError(int verbose, int ret);
+
 int tpm_init(ENACT_TPM *tpm);
 int tpm_deinit(ENACT_TPM *tpm);
 
@@ -42,7 +44,12 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *attested);
 int tpm_exportEccPubToPem(ENACT_TPM *tpm, ENACT_PEM *pem, const char *filename);
 int tpm_exportRsaPubToPem(ENACT_TPM *tpm, ENACT_PEM *pem, const char *filename);
 
-void tpm_printError(int verbose, int ret);
+int tpm_gpio_config(ENACT_TPM *tpm, int gpio);
+int tpm_gpio_read(ENACT_TPM *tpm, int gpio);
+int tpm_gpio_certify(ENACT_TPM *tpm, ENACT_EVIDENCE *attested, int gpio);
+
+int tpm_get_ekcert(ENACT_TPM *tpm, const char *filename);
+int tpm_get_property(ENACT_TPM *tpm, UINT32 tag, UINT32 *value);
 
 #ifdef __cplusplus
     }

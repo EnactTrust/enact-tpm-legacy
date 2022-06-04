@@ -31,6 +31,9 @@
 #include <curl/curl.h>      /* libcurl */
 
 
+#define URL_WEBTEST "https://en56kv1iparat.x.pipedream.net"
+
+
 int EnactAgent(ENACT_EVIDENCE *data, ENACT_FILES *files, ENACT_TPM *tpm, int onboard);
 
 static char uid[UUID_V4_SIZE];
@@ -40,15 +43,14 @@ static char nodeid[UUID_V4_SIZE];
  *
  * * Quick start - Basic attestation service for 1 node (this version).
  * * Developer   - Advanced attestation service for 5 nodes.
- * * Team        - Up to 5 Developers, each with 10 nodes.
  * * Enterprise  - Protecting IoT products during their entire lifecycle,
  *                 ZeroTrust security model for critical infrastructure,
  *                 available on premise and as a managed service.
  *
  * Contact us at info@enacttrust.com for more information.
  *
- * Note: Typically, the configuration of EnactTrust Agent application
- *       can be maintained by the EnactTrust Security Cloud, however
+ * Note: Typically, the configuration of the EnactTrust Agent application
+ *       is maintained by the EnactTrust Security Cloud, however
  *       for the purposes of Basic attestation this is not required.
  *
  */
@@ -137,12 +139,14 @@ size_t pem_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 
 size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
-    int i;
-    printf("response body is:\n");
-    for(i=0; i<nmemb; i++) {
-        putchar(ptr[i]);
+    if(verbose) {
+        int i;
+        printf("response body is:\n");
+        for(i=0; i<nmemb; i++) {
+            putchar(ptr[i]);
+        }
+        printf("\n");
     }
-    printf("\n");
     return size * nmemb;
 }
 
@@ -183,14 +187,14 @@ int agent_onboarding(CURL *curl, ENACT_TPM *tpm)
     ret = tpm_exportEccPubToPem(tpm, &pem, ENACT_AKPEM_FILENAME);
     if(ret == TPM_RC_SUCCESS) {
         store_pem(&pem, ENACT_AKPEM_FILENAME);
-        if(verbose) printf("Agent sent onboarding information.\n");
+        if(verbose) printf("AKpub prepared to enroll.\n");
     }
 
     ret = wolfTPM2_RsaKey_TpmToPemPub(&tpm->dev, &tpm->ek, pem.key, &pemSize);
     if(ret == TPM_RC_SUCCESS) {
         pem.size = pemSize;
         store_pem(&pem, ENACT_EKPEM_FILENAME);
-        if(verbose) printf("Agent sent onboarding information.\n");
+        if(verbose) printf("EKpub prepared to enroll.\n");
     }
 
     if(curl) {
@@ -232,7 +236,49 @@ int agent_onboarding(CURL *curl, ENACT_TPM *tpm)
     return ret;
 }
 
-int agent_sentGolden(CURL *curl)
+int agent_sendEkCert(CURL *curl, ENACT_TPM *tpm)
+{
+    int ret = ENACT_ERROR;
+    CURLcode res;
+    curl_mime *form = NULL;
+    curl_mimepart *field = NULL;
+
+    if(curl) {
+        form = curl_mime_init(curl);
+
+        ret = tpm_get_ekcert(tpm, ENACT_EKCERT_FILENAME);
+        if(ret == ENACT_SUCCESS) {
+            printf("EKCert prepared to enroll.\n");
+
+            field = curl_mime_addpart(form);
+            curl_mime_name(field, ENACT_API_PEM_ARG_EKCERT);
+            curl_mime_filedata(field, ENACT_EKCERT_FILENAME);
+
+            field = curl_mime_addpart(form);
+            curl_mime_name(field, ENACT_API_GOLDEN_ARG_NODEID);
+            curl_mime_filedata(field, ENACT_NODEID_TEMPFILE);
+
+            curl_easy_setopt(curl, CURLOPT_URL, URL_BACKEND_NODE_EKCERT);
+            curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+
+            res = curl_easy_perform(curl);
+            if(res != CURLE_OK) {
+                fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                        curl_easy_strerror(res));
+            }
+            else {
+                ret = ENACT_SUCCESS;
+            }
+        }
+    }
+
+    curl_easy_reset(curl);
+    curl_mime_free(form);
+    return ret;
+}
+
+int agent_sendGolden(CURL *curl)
 {
     int ret = ENACT_ERROR;
     CURLcode res;
@@ -248,7 +294,7 @@ int agent_sentGolden(CURL *curl)
 
         field = curl_mime_addpart(form);
         curl_mime_name(field, ENACT_API_GOLDEN_ARG_SIGN);
-        curl_mime_filedata(field, ENACT_SIGNATURE_FILENAME);
+        curl_mime_filedata(field, ENACT_QUOTE_SIGNATURE_FILENAME);
 
         field = curl_mime_addpart(form);
         curl_mime_name(field, ENACT_API_GOLDEN_ARG_NODEID);
@@ -273,7 +319,9 @@ int agent_sentGolden(CURL *curl)
     return ret;
 }
 
-int agent_sentEvidence(CURL *curl)
+int agent_sendEvidence(CURL *curl, const char *endpoint,
+                       const char *evidBlob,
+                       const char *signBlob)
 {
     int ret = ENACT_ERROR;
     CURLcode res;
@@ -285,17 +333,18 @@ int agent_sentEvidence(CURL *curl)
 
         field = curl_mime_addpart(form);
         curl_mime_name(field, ENACT_API_EVIDENCE_ARG_EVIDENCE);
-        curl_mime_filedata(field, ENACT_QUOTE_FILENAME);
+        curl_mime_filedata(field, evidBlob);
 
         field = curl_mime_addpart(form);
         curl_mime_name(field, ENACT_API_EVIDENCE_ARG_SIGN);
-        curl_mime_filedata(field, ENACT_SIGNATURE_FILENAME);
+        curl_mime_filedata(field, signBlob);
 
         field = curl_mime_addpart(form);
         curl_mime_name(field, ENACT_API_EVIDENCE_ARG_NODEID);
         curl_mime_filedata(field, ENACT_NODEID_TEMPFILE);
 
-        curl_easy_setopt(curl, CURLOPT_URL, URL_NODE_EVIDENCE);
+//        curl_easy_setopt(curl, CURLOPT_URL, endpoint);
+        curl_easy_setopt(curl, CURLOPT_URL, URL_WEBTEST);
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
 
@@ -366,14 +415,14 @@ int fs_listFiles(ENACT_FILES *files)
 }
 
 
-int fs_storeQuote(ENACT_EVIDENCE *evidence)
+int fs_storeEvidence(ENACT_EVIDENCE *evidence, const char *filename)
 {
     int ret = ENACT_ERROR;
     int fileSize, retSize, expectedSize;
     FILE *fp;
 
     retSize = expectedSize = 0;
-    fp = XFOPEN(ENACT_QUOTE_FILENAME, "wb");
+    fp = XFOPEN(filename, "wb");
     if(fp != XBADFILE) {
         fileSize = sizeof(evidence->raw.size);
         expectedSize = sizeof(evidence->raw.size);
@@ -400,7 +449,7 @@ int fs_storeQuote(ENACT_EVIDENCE *evidence)
     return ret;
 }
 
-int fs_storeSign(ENACT_EVIDENCE *evidence)
+int fs_storeSign(ENACT_EVIDENCE *evidence, const char *filename)
 {
     UINT16 ret = ENACT_ERROR;
     UINT16 fileSize, retSize, expectedSize;
@@ -408,7 +457,7 @@ int fs_storeSign(ENACT_EVIDENCE *evidence)
     FILE *fp = NULL;
 
     retSize = expectedSize = 0;
-    fp = XFOPEN(ENACT_SIGNATURE_FILENAME, "wb");
+    fp = XFOPEN(filename, "wb");
     if(fp != XBADFILE) {
         /* Store signature and hash algorithm */
         fileSize = sizeof(evidence->signature.sigAlg);
@@ -482,6 +531,13 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     if(onboard) {
         /* Send AK & EK PEM for host identification */
         agent_onboarding(curl, tpm);
+#ifdef ENACT_TPM_GPIO_ENABLE
+        /* Configure TPM GPIO for physical lock detection */
+        tpm_gpio_config(tpm, TPM_GPIO_A);
+        tpm_gpio_read(tpm, TPM_GPIO_A);
+#endif /* ENACT_TPM_GPIO_ENABLE */
+        /* Send EK Certificate for TPM Manufacturer identification */
+        agent_sendEkCert(curl, tpm);
     }
     else {
         /* Read nodeID to prepare for use later, in evidence */
@@ -495,6 +551,7 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     }
     else {
         printf("Unable to prepare evidence\n");
+        goto exit;
     }
 
     if(ret == ENACT_SUCCESS) {
@@ -505,23 +562,44 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     }
     else {
         printf("Unable to create evidence\n");
+        goto exit;
     }
-    /* Store temporary artifacts */
+    /* Store temporary System evidence artifacts */
     if(ret == ENACT_SUCCESS) {
-        printf("Storing quote\n");
-        ret = fs_storeQuote(evidence);
-        printf("Storing signature\n");
-        ret |= fs_storeSign(evidence);
+        if(verbose) printf("Storing System evidence\n");
+        ret = fs_storeEvidence(evidence, ENACT_QUOTE_FILENAME);
+        ret |= fs_storeSign(evidence, ENACT_QUOTE_SIGNATURE_FILENAME);
         if(ret) {
             printf("Failed to store evidence\n");
+            goto exit;
         }
     }
+
+#ifdef ENACT_TPM_GPIO_ENABLE
+    ret = tpm_gpio_certify(tpm, evidence, TPM_GPIO_A);
+    /* Store temporary GPIO evidence artifacts */
+    if(ret == ENACT_SUCCESS) {
+        if(verbose) printf("Storing GPIO evidence\n");
+        ret = fs_storeEvidence(evidence, ENACT_GPIO_FILENAME);
+        ret |= fs_storeSign(evidence, ENACT_GPIO_SIGNATURE_FILENAME);
+        if(ret) {
+            printf("Failed to store evidence\n");
+            goto exit;
+        }
+    }
+#endif /* ENACT_TPM_GPIO_ENABLE */
+
     /* Transfer golden or fresh evidence to the EnactTrust verifier */
     if(onboard) {
-        agent_sentGolden(curl);
+        agent_sendGolden(curl);
     }
     else {
-        agent_sentEvidence(curl);
+        agent_sendEvidence(curl, URL_NODE_EVIDENCE, ENACT_QUOTE_FILENAME,
+                        ENACT_QUOTE_SIGNATURE_FILENAME);
+#ifdef ENACT_TPM_GPIO_ENABLE
+        agent_sendEvidence(curl, URL_NODE_GPIOEVID, ENACT_GPIO_FILENAME,
+                        ENACT_GPIO_SIGNATURE_FILENAME);
+#endif /* ENACT_TPM_GPIO_ENABLE */
     }
 
     if(ret == ENACT_SUCCESS) {
@@ -531,6 +609,7 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
         printf("Error %d. Please contact us at support@enacttrust.com\n", ret);
     }
 
+exit:
     /* Make sure we do a clean exit */
     if(curl) {
         curl_easy_cleanup(curl);
@@ -569,10 +648,16 @@ int main(int argc, char *argv[])
     XMEMSET(nodeid, 0, sizeof(nodeid));
 
     printf("EnactTrust agent v%s\n", ENACT_VERSION_STRING);
+    printf("\n");
     printf("EnactTrust endpoints in use\n");
     printf("Onboarding: %s\n", URL_NODE_PEM);
     printf("Golden value: %s\n", URL_NODE_GOLDEN);
     printf("Fresh evidence: %s\n", URL_NODE_EVIDENCE);
+    printf("EK Cert: %s\n", URL_NODE_EKCERT);
+#ifdef ENACT_TPM_GPIO_ENABLE
+    printf("GPIO evidence: %s\n", URL_NODE_GPIOEVID);
+#endif
+    printf("\n");
 
     /* Parse arguments */
     onboarding = setup = 0;
