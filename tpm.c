@@ -31,11 +31,18 @@
 #include <wolfssl/wolfcrypt/asn_public.h>
 /* EnactTrust */
 #include "enact.h"
+#include "tpm.h"
 
 static int verbose = 0;
 
 #define FILE_CHUNK_SIZE 1024 /* Size of the chunk used to process files */
 #define DER_SIZE 256 /* Size of DER formatted output */
+
+
+void tpm_printError(int verbose, int ret)
+{
+    if(verbose) printf("TPM error 0x%x: %s\n", ret, TPM2_GetRCString(ret));
+}
 
 int tpm_init(ENACT_TPM *tpm)
 {
@@ -122,7 +129,7 @@ int tpm_createSRK(ENACT_TPM *tpm)
         }
     }
     else {
-        printf("SRK is persistent\n");
+        if(verbose) printf("Primary TPM key is persistent\n");
     }
 
     return ret == TPM_RC_SUCCESS ? ENACT_SUCCESS : ENACT_ERROR;
@@ -146,7 +153,7 @@ int tpm_createAK(ENACT_TPM *tpm)
         }
     }
     else {
-        printf("AK is persistent\n");
+        if(verbose) printf("Attestation TPM key is persistent\n");
     }
 
 
@@ -251,7 +258,7 @@ int tpm_pcrExtend(ENACT_FILES *files, UINT32 pcrIndex)
         }
         else {
             if(verbose) printf("PCR Extend failed\n");
-            //tpm_printError(ret);
+            tpm_printError(verbose, ret);
         }
     }
 
@@ -365,7 +372,291 @@ int tpm_exportEccPubToPem(ENACT_TPM *tpm, ENACT_PEM *pem, const char *filename)
     return ret;
 }
 
-void tpm_printError(int verbose, int ret)
+#ifdef ENACT_TPM_GPIO_ENABLE
+int tpm_gpio_config(ENACT_TPM *tpm, int gpioPin)
 {
-    if(verbose) printf("TPM error 0x%x: %s\n", ret, TPM2_GetRCString(ret));
+    int ret = ENACT_ERROR;
+    GpioConfig_In gpio;
+    SetCommandSet_In setCmdSet;
+    word32 nvAttributes;
+    BYTE dummy = 0;
+
+    XMEMSET(&setCmdSet, 0, sizeof(setCmdSet));
+    XMEMSET(&tpm->gpio.nv, 0, sizeof(tpm->gpio.nv));
+    XMEMSET(&tpm->gpio.nvParent, 0, sizeof(tpm->gpio.nvParent));
+
+    wolfTPM2_UnsetAuth(&tpm->dev, 0);
+    wolfTPM2_UnsetAuth(&tpm->dev, 1);
+    wolfTPM2_UnsetAuth(&tpm->dev, 2);
+
+    tpm->gpio.gpioMode = TPM_GPIO_MODE_PULLDOWN;
+    tpm->gpio.nvIndex = TPM_NV_GPIO_SPACE + (gpioPin-TPM_GPIO_NUM_MIN);
+
+    ret = wolfTPM2_NVDelete(&tpm->dev, TPM_RH_OWNER, tpm->gpio.nvIndex);
+    if(ret == TPM_RC_SUCCESS || ret == (TPM_RC_HANDLE | TPM_RC_2)) {
+        if(verbose) printf("GPIO NV index is available\n");
+    }
+    else {
+        printf("Unable to access GPIO NV index\n");
+        tpm_printError(verbose, ret);
+        return ret;
+    }
+
+    setCmdSet.authHandle = TPM_RH_PLATFORM;
+    setCmdSet.commandCode = TPM_CC_GPIO_Config;
+    setCmdSet.enableFlag = 1;
+    ret = TPM2_SetCommandSet(&setCmdSet);
+    if(ret != TPM_RC_SUCCESS) {
+        printf("GPIO config command missing\n");
+        tpm_printError(verbose, ret);
+        return ret;
+    }
+
+    /* GPIO is accessed using an NV Index that is under the PLATFORM auth */
+    XMEMSET(&gpio, 0, sizeof(gpio));
+    gpio.authHandle = TPM_RH_PLATFORM;
+    gpio.config.count = 1;
+    gpio.config.gpio[0].name = gpioPin;
+    gpio.config.gpio[0].mode = tpm->gpio.gpioMode;
+    gpio.config.gpio[0].index = tpm->gpio.nvIndex;
+    if(verbose) printf("Configuring GPIO%d...\n", gpio.config.gpio[0].name);
+    ret = TPM2_GPIO_Config(&gpio);
+    if(ret != TPM_RC_SUCCESS) {
+        printf("Configuration failed\n");
+        tpm_printError(verbose, ret);
+        return ret;
+    }
+    printf("TPM GPIO%d configured.\n", gpio.config.gpio[0].name);
+
+    /* Configure NV Index for access to this GPIO */
+    tpm->gpio.nvParent.hndl = TPM_RH_OWNER;
+    ret = wolfTPM2_GetNvAttributesTemplate(tpm->gpio.nvParent.hndl, &nvAttributes);
+    if(ret != TPM_RC_SUCCESS) {
+        printf("NV attributes failed\n");
+        return ret;
+    }
+    /* Define NV Index for GPIO */
+    ret = wolfTPM2_NVCreateAuth(&tpm->dev, &tpm->gpio.nvParent,
+                                &tpm->gpio.nv, tpm->gpio.nvIndex,
+                                nvAttributes, sizeof(BYTE), NULL, 0);
+    if(ret != 0 && ret != TPM_RC_NV_DEFINED) {
+        printf("Creating GPIO NV index failed\n");
+        tpm_printError(verbose, ret);
+        return ret;
+    }
+    if(verbose) printf("GPIO NV index created\n");
+
+    /* Writing a dummy byte has no impact on the input, but it is required */
+    ret = wolfTPM2_NVWriteAuth(&tpm->dev, &tpm->gpio.nv, tpm->gpio.nvIndex,
+                               &dummy, sizeof(dummy), 0);
+    if(ret != TPM_RC_SUCCESS) {
+            printf("Error at last GPIO configuration step.\n");
+    }
+    else {
+        if(verbose) printf("GPIO is ready\n");
+        ret = ENACT_SUCCESS;
+    }
+
+    return ret;
+}
+
+int tpm_gpio_read(ENACT_TPM *tpm, int gpio)
+{
+    int ret = ENACT_ERROR;
+    BYTE gpioState = 0;
+    word32 readSize = 0;
+
+    XMEMSET(&tpm->gpio.nv, 0, sizeof(tpm->gpio.nv));
+    XMEMSET(&tpm->gpio.nvParent, 0, sizeof(tpm->gpio.nvParent));
+
+    wolfTPM2_UnsetAuth(&tpm->dev, 0);
+    wolfTPM2_UnsetAuth(&tpm->dev, 1);
+    wolfTPM2_UnsetAuth(&tpm->dev, 2);
+
+    tpm->gpio.nvIndex = TPM_NV_GPIO_SPACE + (gpio-TPM_GPIO_NUM_MIN);
+
+    /* Prep NV Index and its auth */
+    tpm->gpio.nv.handle.hndl = tpm->gpio.nvIndex;
+    tpm->gpio.nv.handle.auth.size = 0;
+    tpm->gpio.nvParent.hndl = TPM_RH_OWNER;
+    /* Read GPIO state */
+    readSize = sizeof(gpioState);
+    ret = wolfTPM2_NVReadAuth(&tpm->dev, &tpm->gpio.nv, tpm->gpio.nvIndex, &gpioState, &readSize, 0);
+    if(ret == TPM_RC_SUCCESS) {
+        ret = ENACT_SUCCESS;
+        if(gpioState == 0x01) {
+            printf("TPM GPIO%d is High.\n", gpio);
+        }
+        else if(gpioState == 0x00) {
+            printf("TPM GPIO%d is Low.\n", gpio);
+        }
+        else {
+            printf("GPIO%d level read, invalid value = 0x%X\n", gpio, gpioState);
+        }
+    }
+    else {
+        printf("Error while reading GPIO state\n");
+    }
+
+    return ret;
+}
+
+int tpm_gpio_certify(ENACT_TPM *tpm, ENACT_EVIDENCE *attested, int gpio)
+{
+    int ret = ENACT_ERROR;
+    NV_Certify_In nvCmd;
+    NV_Certify_Out nvResp;
+
+    XMEMSET(&nvCmd, 0, sizeof(nvCmd));
+    XMEMSET(&nvResp, 0, sizeof(nvResp));
+
+    tpm->gpio.nvIndex = TPM_NV_GPIO_SPACE + (gpio-TPM_GPIO_NUM_MIN);
+    tpm->gpio.nvParent.hndl = TPM_RH_OWNER;
+
+    nvCmd.signHandle = tpm->ak.handle.hndl;
+    nvCmd.authHandle = tpm->gpio.nvParent.hndl;
+    nvCmd.nvIndex = tpm->gpio.nvIndex;
+    nvCmd.qualifyingData.size = sizeof(attested->nodeid);
+    XMEMCPY((byte*)&nvCmd.qualifyingData.buffer,
+            (byte*)&attested->nodeid,
+            nvCmd.qualifyingData.size);
+    nvCmd.inScheme.scheme = TPM_ALG_ECDSA;
+    nvCmd.inScheme.details.any.hashAlg = TPM_ALG_SHA256;
+    nvCmd.offset = 0;
+    nvCmd.size = 1; /* GPIO status is provided as a single byte */
+
+    wolfTPM2_SetAuthHandle(&tpm->dev, 0, &tpm->ak.handle);
+    wolfTPM2_SetAuthPassword(&tpm->dev, 1, NULL);
+
+    ret = TPM2_NV_Certify(&nvCmd, &nvResp);
+    if(ret == TPM_RC_SUCCESS) {
+        ret = TPM2_ParseAttest(&nvResp.certifyInfo, &attested->data);
+        if(ret == TPM_RC_SUCCESS) {
+            if(attested->data.magic == TPM_GENERATED_VALUE) {
+                if(verbose) printf("GPIO Evidence created.\n");
+                XMEMCPY((byte*)&attested->data,
+                        (byte*)&nvResp.certifyInfo.attestationData,
+                        nvResp.certifyInfo.size);
+                XMEMCPY((byte*)&attested->signature,
+                        (byte*)&nvResp.signature,
+                        sizeof(nvResp.signature));
+                XMEMCPY((byte*)&attested->raw,
+                        (byte*)&nvResp.certifyInfo,
+                        sizeof(nvResp.certifyInfo));
+                ret = ENACT_SUCCESS;
+            }
+            else {
+                if(verbose) printf("Invalid TPM magic value.\n");
+            }
+        }
+        else {
+            if(verbose) printf("Failure to process the new GPIO evidence.\n");
+        }
+    }
+    else {
+        if(verbose) printf("Failure to create GPIO evidence.\n");
+        tpm_printError(verbose, ret);
+    }
+
+    return ret;
+}
+#endif /* ENACT_TPM_GPIO_ENABLE */
+
+int tpm_get_ekcert(ENACT_TPM *tpm, const char *filename)
+{
+    int ret = ENACT_ERROR;
+    NV_Read_In nvReadCmd;
+    NV_Read_Out nvReadResp;
+    NV_ReadPublic_In nvReadPubCmd;
+    NV_ReadPublic_Out nvReadPubResp;
+    word32 chunkSize, dataSize, readSize = 0;
+    size_t fileSize;
+    XFILE fp = NULL;
+
+    /* nvReadPubCmd is just nvindex that we set below */
+    XMEMSET(&nvReadCmd, 0, sizeof(nvReadCmd));
+    XMEMSET(&nvReadResp, 0, sizeof(nvReadResp));
+    nvReadPubCmd.nvIndex = TPM2_NV_ECC_EK_CERT;
+    XMEMSET(&nvReadPubResp, 0, sizeof(nvReadPubResp));
+
+    chunkSize = 512; /* Safe NV read step */
+    if(verbose) printf("NVRead step is %d\n", chunkSize);
+
+    ret = TPM2_NV_ReadPublic(&nvReadPubCmd, &nvReadPubResp);
+    if(ret != TPM_RC_SUCCESS) {
+        return ret;
+    }
+    printf("Found EKCert (%d bytes).\n", nvReadPubResp.nvPublic.nvPublic.dataSize);
+    dataSize = nvReadPubResp.nvPublic.nvPublic.dataSize;
+
+    /* Prepare file to store the EK Certificate */
+    fp = XFOPEN(ENACT_EKCERT_FILENAME, "wt");
+    if(fp == XBADFILE) {
+        printf("Error creating a file to store the EK certificate\n");
+        return ret;
+    }
+
+    /* Set Auth */
+    wolfTPM2_SetAuthPassword(&tpm->dev, 0, NULL);
+    wolfTPM2_UnsetAuth(&tpm->dev, 1);
+    wolfTPM2_UnsetAuth(&tpm->dev, 2);
+
+    /* Prepare NV Read command */
+    nvReadCmd.authHandle = nvReadPubCmd.nvIndex;
+    nvReadCmd.nvIndex = nvReadPubCmd.nvIndex;
+    /* Read in steps from the TPM's NVRAM */
+    while(dataSize != readSize) {
+        nvReadCmd.offset = readSize;
+        if(dataSize - readSize < chunkSize) {
+            nvReadCmd.size = dataSize - readSize;
+        }
+        else {
+            nvReadCmd.size = chunkSize;
+        }
+
+        ret = TPM2_NV_Read(&nvReadCmd, &nvReadResp);
+        if(ret == TPM_RC_SUCCESS) {
+            if(verbose) printf("NVRead %d bytes\n", nvReadResp.data.size);
+            readSize += nvReadResp.data.size;
+            fileSize = XFWRITE(nvReadResp.data.buffer, 1, nvReadResp.data.size, fp);
+            if(fileSize != nvReadResp.data.size) {
+                if(verbose) printf("Error while storing the EK Certificate\n");
+                break;
+            }
+        }
+        else {
+            tpm_printError(verbose, ret);
+            break;
+        }
+    }
+    XFCLOSE(fp);
+
+    if(dataSize == readSize) {
+        ret = ENACT_SUCCESS;
+        if(verbose) printf("Read EKCert of %d size\n", readSize);
+    }
+    return ret;
+}
+
+int tpm_get_property(ENACT_TPM *tpm, UINT32 tag, UINT32 *value)
+{
+    int ret = ENACT_SUCCESS;
+    GetCapability_In cmdGetCap;
+    GetCapability_Out respGetCap;
+
+    cmdGetCap.capability = TPM_CAP_TPM_PROPERTIES;
+    cmdGetCap.property = tag;
+    cmdGetCap.propertyCount = 1; /* ask for one property */
+    ret = TPM2_GetCapability(&cmdGetCap, &respGetCap);
+    if(ret == TPM_RC_SUCCESS) {
+        ret = ENACT_SUCCESS;
+        printf("PT NV Read MAX is %d\n",
+               respGetCap.capabilityData.data.tpmProperties.tpmProperty[0].value);
+        *value = respGetCap.capabilityData.data.tpmProperties.tpmProperty[0].value;
+    }
+    else {
+        printf("Failed to read TPM property\n");
+    }
+
+    return ret;
 }
