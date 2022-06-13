@@ -66,20 +66,24 @@
 #define MAX_PEM_SIZE 512
 #define MAX_CMD_SIZE 200
 
+#ifdef ENACT_TPM_GPIO_ENABLE
 typedef struct ENACT_TPM_GPIO {
     WOLFTPM2_NV nv;
     WOLFTPM2_HANDLE nvParent;
     TPMI_GPIO_MODE gpioMode;
     TPM_HANDLE nvIndex;
 } ENACT_TPM_GPIO;
+#endif /* ENACT_TPM_GPIO_ENABLE */
 
 typedef struct ENACT_TPM {
-    ENACT_TPM_GPIO gpio;
     WOLFTPM2_DEV dev;
     WOLFTPM2_KEY ek;
     WOLFTPM2_KEY primary; /* Storage Key */
     WOLFTPM2_KEY ak; /* Attestation Key */
     WOLFTPM2_SESSION sessionA; /* Param Enc */
+#ifdef ENACT_TPM_GPIO_ENABLE
+    ENACT_TPM_GPIO gpio;
+#endif
 } ENACT_TPM;
 
 typedef struct ENACT_EVIDENCE {
