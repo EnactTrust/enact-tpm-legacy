@@ -187,13 +187,13 @@ int tpm_pcrReset(UINT32 pcrIndex)
 }
 
 
-int tpm_pcrRead(ENACT_EVIDENCE *attested, UINT32 pcrIndex)
+int tpm_pcrRead(ENACT_EVIDENCE *evidence, UINT32 pcrIndex)
 {
     int ret = ENACT_ERROR;
     PCR_Read_In cmd_pcrRead;
     PCR_Read_Out resp_pcrRead;
 
-    if(attested == NULL) {
+    if(evidence == NULL) {
         return BAD_ARG;
     }
 
@@ -265,22 +265,22 @@ int tpm_pcrExtend(ENACT_FILES *files, UINT32 pcrIndex)
     return ret;
 }
 
-int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *attested)
+int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *evidence)
 {
     int ret = ENACT_ERROR;
     Quote_In quoteCmd;
     Quote_Out quoteResp;
 
-    if(tpm == NULL || attested == NULL) {
+    if(tpm == NULL || evidence == NULL) {
         return BAD_ARG;
     }
 
     quoteCmd.signHandle = tpm->ak.handle.hndl;
     quoteCmd.inScheme.scheme = TPM_ALG_ECDSA;
     quoteCmd.inScheme.details.any.hashAlg = TPM_ALG_SHA256;
-    quoteCmd.qualifyingData.size = sizeof(attested->nodeid);
+    quoteCmd.qualifyingData.size = sizeof(evidence->nodeid);
     XMEMCPY((byte*)&quoteCmd.qualifyingData.buffer,
-            (byte*)&attested->nodeid,
+            (byte*)&evidence->nodeid,
             quoteCmd.qualifyingData.size);
 
     wolfTPM2_SetAuthPassword(&tpm->dev, 0, NULL);
@@ -290,17 +290,17 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *attested)
     TPM2_SetupPCRSel(&quoteCmd.PCRselect, TPM_ALG_SHA256, ENACT_TPM_QUOTE_PCR);
     ret = TPM2_Quote(&quoteCmd, &quoteResp);
     if(ret == TPM_RC_SUCCESS) {
-        ret = TPM2_ParseAttest(&quoteResp.quoted, &attested->data);
+        ret = TPM2_ParseAttest(&quoteResp.quoted, &evidence->data);
         if(ret == TPM_RC_SUCCESS) {
-            if(attested->data.magic == TPM_GENERATED_VALUE) {
+            if(evidence->data.magic == TPM_GENERATED_VALUE) {
                 if(verbose) printf("Evidence created.\n");
-                XMEMCPY((byte*)&attested->data,
+                XMEMCPY((byte*)&evidence->data,
                         (byte*)&quoteResp.quoted.attestationData,
                         quoteResp.quoted.size);
-                XMEMCPY((byte*)&attested->signature,
+                XMEMCPY((byte*)&evidence->signature,
                         (byte*)&quoteResp.signature,
                         sizeof(quoteResp.signature));
-                XMEMCPY((byte*)&attested->raw,
+                XMEMCPY((byte*)&evidence->raw,
                         (byte*)&quoteResp.quoted,
                         sizeof(quoteResp.quoted));
                 ret = ENACT_SUCCESS;
@@ -504,7 +504,7 @@ int tpm_gpio_read(ENACT_TPM *tpm, int gpio)
     return ret;
 }
 
-int tpm_gpio_certify(ENACT_TPM *tpm, ENACT_EVIDENCE *attested, int gpio)
+int tpm_gpio_certify(ENACT_TPM *tpm, ENACT_EVIDENCE *evidence, int gpio)
 {
     int ret = ENACT_ERROR;
     NV_Certify_In nvCmd;
@@ -519,9 +519,9 @@ int tpm_gpio_certify(ENACT_TPM *tpm, ENACT_EVIDENCE *attested, int gpio)
     nvCmd.signHandle = tpm->ak.handle.hndl;
     nvCmd.authHandle = tpm->gpio.nvParent.hndl;
     nvCmd.nvIndex = tpm->gpio.nvIndex;
-    nvCmd.qualifyingData.size = sizeof(attested->nodeid);
+    nvCmd.qualifyingData.size = sizeof(evidence->nodeid);
     XMEMCPY((byte*)&nvCmd.qualifyingData.buffer,
-            (byte*)&attested->nodeid,
+            (byte*)&evidence->nodeid,
             nvCmd.qualifyingData.size);
     nvCmd.inScheme.scheme = TPM_ALG_ECDSA;
     nvCmd.inScheme.details.any.hashAlg = TPM_ALG_SHA256;
@@ -534,17 +534,17 @@ int tpm_gpio_certify(ENACT_TPM *tpm, ENACT_EVIDENCE *attested, int gpio)
 
     ret = TPM2_NV_Certify(&nvCmd, &nvResp);
     if(ret == TPM_RC_SUCCESS) {
-        ret = TPM2_ParseAttest(&nvResp.certifyInfo, &attested->data);
+        ret = TPM2_ParseAttest(&nvResp.certifyInfo, &evidence->data);
         if(ret == TPM_RC_SUCCESS) {
-            if(attested->data.magic == TPM_GENERATED_VALUE) {
+            if(evidence->data.magic == TPM_GENERATED_VALUE) {
                 if(verbose) printf("GPIO Evidence created.\n");
-                XMEMCPY((byte*)&attested->data,
+                XMEMCPY((byte*)&evidence->data,
                         (byte*)&nvResp.certifyInfo.attestationData,
                         nvResp.certifyInfo.size);
-                XMEMCPY((byte*)&attested->signature,
+                XMEMCPY((byte*)&evidence->signature,
                         (byte*)&nvResp.signature,
                         sizeof(nvResp.signature));
-                XMEMCPY((byte*)&attested->raw,
+                XMEMCPY((byte*)&evidence->raw,
                         (byte*)&nvResp.certifyInfo,
                         sizeof(nvResp.certifyInfo));
                 ret = ENACT_SUCCESS;
