@@ -248,7 +248,7 @@ int agent_sendEkCert(CURL *curl, ENACT_TPM *tpm)
 
         ret = tpm_get_ekcert(tpm, ENACT_EKCERT_FILENAME);
         if(ret == ENACT_SUCCESS) {
-            printf("EKCert prepared to enroll.\n");
+            if(verbose) printf("EKCert prepared to enroll.\n");
 
             field = curl_mime_addpart(form);
             curl_mime_name(field, ENACT_API_PEM_ARG_EKCERT);
@@ -649,7 +649,7 @@ int main(int argc, char *argv[])
 
     printf("EnactTrust agent v%s\n", ENACT_VERSION_STRING);
     printf("\n");
-    printf("EnactTrust endpoints in use\n");
+    printf("EnactTrust endpoints in use:\n");
     printf("Onboarding: %s\n", URL_NODE_PEM);
     printf("Golden value: %s\n", URL_NODE_GOLDEN);
     printf("Fresh evidence: %s\n", URL_NODE_EVIDENCE);

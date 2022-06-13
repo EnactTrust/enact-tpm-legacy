@@ -426,7 +426,7 @@ int tpm_gpio_config(ENACT_TPM *tpm, int gpioPin)
         tpm_printError(verbose, ret);
         return ret;
     }
-    printf("TPM GPIO%d configured\n", gpio.config.gpio[0].name);
+    printf("TPM GPIO%d configured.\n", gpio.config.gpio[0].name);
 
     /* Configure NV Index for access to this GPIO */
     tpm->gpio.nvParent.hndl = TPM_RH_OWNER;
@@ -586,7 +586,7 @@ int tpm_get_ekcert(ENACT_TPM *tpm, const char *filename)
     if(ret != TPM_RC_SUCCESS) {
         return ret;
     }
-    printf("Found EKCert of %d size\n", nvReadPubResp.nvPublic.nvPublic.dataSize);
+    printf("Found EKCert (%d bytes).\n", nvReadPubResp.nvPublic.nvPublic.dataSize);
     dataSize = nvReadPubResp.nvPublic.nvPublic.dataSize;
 
     /* Prepare file to store the EK Certificate */
