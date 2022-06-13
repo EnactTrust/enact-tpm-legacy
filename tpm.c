@@ -283,7 +283,10 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *attested)
             (byte*)&attested->nodeid,
             quoteCmd.qualifyingData.size);
 
-    wolfTPM2_SetAuthHandle(&tpm->dev, 0, &tpm->ak.handle);
+    wolfTPM2_SetAuthPassword(&tpm->dev, 0, NULL);
+    wolfTPM2_UnsetAuth(&tpm->dev, 1);
+    wolfTPM2_UnsetAuth(&tpm->dev, 2);
+
     TPM2_SetupPCRSel(&quoteCmd.PCRselect, TPM_ALG_SHA256, ENACT_TPM_QUOTE_PCR);
     ret = TPM2_Quote(&quoteCmd, &quoteResp);
     if(ret == TPM_RC_SUCCESS) {
@@ -525,8 +528,9 @@ int tpm_gpio_certify(ENACT_TPM *tpm, ENACT_EVIDENCE *attested, int gpio)
     nvCmd.offset = 0;
     nvCmd.size = 1; /* GPIO status is provided as a single byte */
 
-    wolfTPM2_SetAuthHandle(&tpm->dev, 0, &tpm->ak.handle);
+    wolfTPM2_SetAuthPassword(&tpm->dev, 0, NULL);
     wolfTPM2_SetAuthPassword(&tpm->dev, 1, NULL);
+    wolfTPM2_UnsetAuth(&tpm->dev, 2);
 
     ret = TPM2_NV_Certify(&nvCmd, &nvResp);
     if(ret == TPM_RC_SUCCESS) {
