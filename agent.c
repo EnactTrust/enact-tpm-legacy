@@ -253,7 +253,7 @@ int agent_sendEkCert(CURL *curl, ENACT_TPM *tpm)
 
             field = curl_mime_addpart(form);
             curl_mime_name(field, ENACT_API_GOLDEN_ARG_NODEID);
-            curl_mime_filedata(field, ENACT_NODEID_TEMPFILE);
+            curl_mime_data(field, (const char *)nodeid, sizeof(nodeid));
 
             curl_easy_setopt(curl, CURLOPT_URL, URL_BACKEND_NODE_EKCERT);
             curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
@@ -617,11 +617,11 @@ exit:
 
 void usage(void) {
     printf("EnactTrust agent has these modes of operation:\n");
-    printf("\t./enact onboard UID - Use to provision a new node\n");
+    printf("\tenact onboard UID - Use to provision a new node\n");
     printf("\t\tUID - Register at www.enacttrust.com for your user id.\n");
-    printf("\t./enact start - EnactTrust is configured as a Linux service\n");
+    printf("\tenact start - EnactTrust is configured as a Linux service\n");
     printf("\t\tThis way Enact can continiously monitor the system health\n");
-    printf("\t./enact - Generate a fresh evidence\n");
+    printf("\tenact - Generate a fresh evidence\n");
     printf("\t\tTypically, the Linux service generates the fresh evidence,\n");
     printf("\t\thowever, enact can be launched on demand for various use cases\n");
     printf("Please contact us at \"support@enacttrust.com\" for more information.\n");
@@ -644,15 +644,6 @@ int main(int argc, char *argv[])
     XMEMSET(nodeid, 0, sizeof(nodeid));
 
     printf("EnactTrust agent v%s\n", ENACT_VERSION_STRING);
-    printf("\n");
-    printf("EnactTrust endpoints in use:\n");
-    printf("Onboarding: %s\n", URL_NODE_PEM);
-    printf("Golden value: %s\n", URL_NODE_GOLDEN);
-    printf("Fresh evidence: %s\n", URL_NODE_EVIDENCE);
-    printf("EK Cert: %s\n", URL_NODE_EKCERT);
-#ifdef ENACT_TPM_GPIO_ENABLE
-    printf("GPIO evidence: %s\n", URL_NODE_GPIOEVID);
-#endif
     printf("\n");
 
     /* Parse arguments */
@@ -680,9 +671,25 @@ int main(int argc, char *argv[])
         if(verbose) printf("Generating fresh evidence.\n");
     }
 
+    printf("EnactTrust endpoints in use:\n");
+    if(onboarding) {
+        printf("Onboarding: %s\n", URL_NODE_PEM);
+        printf("Golden value: %s\n", URL_NODE_GOLDEN);
+        printf("EK Cert: %s\n", URL_NODE_EKCERT);
+    }
+    else {
+        printf("Fresh evidence: %s\n", URL_NODE_EVIDENCE);
+    #ifdef ENACT_TPM_GPIO_ENABLE
+        printf("GPIO evidence: %s\n", URL_NODE_GPIOEVID);
+    #endif
+        printf("\n");
+    }
+
     /* Configure as a service, or execute an action */
     if(setup) {
         printf("Running as a Linux service is not implemented\n");
+        printf("Run enact without arguments to generate a fresh evidence\n");
+        printf("\t$ enact\n\n");
         ret = NOT_IMPLEMENTED; /* TODO */
     }
     else {
