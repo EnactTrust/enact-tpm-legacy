@@ -572,6 +572,9 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     }
 
 #ifdef ENACT_TPM_GPIO_ENABLE
+    /* Get a fresh readout of the GPIO in the TPM NV Index */
+    tpm_gpio_read(tpm, TPM_GPIO_A);
+    /* Generate TPM GPIO evidence */
     ret = tpm_gpio_certify(tpm, evidence, TPM_GPIO_A);
     /* Store temporary GPIO evidence artifacts */
     if(ret == ENACT_SUCCESS) {
@@ -592,11 +595,11 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     else {
         agent_sendEvidence(curl, URL_NODE_EVIDENCE, ENACT_QUOTE_FILENAME,
                         ENACT_QUOTE_SIGNATURE_FILENAME);
+    }
 #ifdef ENACT_TPM_GPIO_ENABLE
-        agent_sendEvidence(curl, URL_NODE_GPIOEVID, ENACT_GPIO_FILENAME,
+    agent_sendEvidence(curl, URL_NODE_GPIOEVID, ENACT_GPIO_FILENAME,
                         ENACT_GPIO_SIGNATURE_FILENAME);
 #endif /* ENACT_TPM_GPIO_ENABLE */
-    }
 
     if(ret == ENACT_SUCCESS) {
         printf("OK. Evidence created and sent. No action required.\n");
