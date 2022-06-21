@@ -369,7 +369,7 @@ int fs_listFiles(ENACT_FILES *files)
 
     d = opendir(ENACT_DEMO_PATH);
     if(d != NULL) {
-        if(verbose) printf("Listing all files in current directory\n");
+        printf("Protecting folder %s\n", ENACT_DEMO_PATH);
         for(i = 0; i < MAX_FILE_COUNT; i++) {
             dir = readdir(d);
             if(dir == NULL) {
@@ -390,7 +390,7 @@ int fs_listFiles(ENACT_FILES *files)
         }
     }
     else {
-        if(verbose) printf("Unable to open directory. Protecting /etc/passwd\n");
+        printf("Protecting file %s\n", ENACT_DEMO_FILE);
         /* Special case: protect Linux user list */
         strncpy(files->name[0], ENACT_DEMO_FILE, sizeof(files->name[0]));
         files->count++;
