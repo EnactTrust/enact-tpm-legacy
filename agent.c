@@ -369,7 +369,7 @@ int fs_listFiles(ENACT_FILES *files)
 
     d = opendir(ENACT_DEMO_PATH);
     if(d != NULL) {
-        if(verbose) printf("Listing all files in current directory\n");
+        printf("Protecting folder %s\n", ENACT_DEMO_PATH);
         for(i = 0; i < MAX_FILE_COUNT; i++) {
             dir = readdir(d);
             if(dir == NULL) {
@@ -390,7 +390,7 @@ int fs_listFiles(ENACT_FILES *files)
         }
     }
     else {
-        if(verbose) printf("Unable to open directory. Protecting /etc/passwd\n");
+        printf("Protecting file %s\n", ENACT_DEMO_FILE);
         /* Special case: protect Linux user list */
         strncpy(files->name[0], ENACT_DEMO_FILE, sizeof(files->name[0]));
         files->count++;
@@ -572,6 +572,9 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     }
 
 #ifdef ENACT_TPM_GPIO_ENABLE
+    /* Get a fresh readout of the GPIO in the TPM NV Index */
+    tpm_gpio_read(tpm, TPM_GPIO_A);
+    /* Generate TPM GPIO evidence */
     ret = tpm_gpio_certify(tpm, evidence, TPM_GPIO_A);
     /* Store temporary GPIO evidence artifacts */
     if(ret == ENACT_SUCCESS) {
@@ -592,11 +595,11 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     else {
         agent_sendEvidence(curl, URL_NODE_EVIDENCE, ENACT_QUOTE_FILENAME,
                         ENACT_QUOTE_SIGNATURE_FILENAME);
+    }
 #ifdef ENACT_TPM_GPIO_ENABLE
-        agent_sendEvidence(curl, URL_NODE_GPIOEVID, ENACT_GPIO_FILENAME,
+    agent_sendEvidence(curl, URL_NODE_GPIOEVID, ENACT_GPIO_FILENAME,
                         ENACT_GPIO_SIGNATURE_FILENAME);
 #endif /* ENACT_TPM_GPIO_ENABLE */
-    }
 
     if(ret == ENACT_SUCCESS) {
         printf("OK. Evidence created and sent. No action required.\n");
