@@ -29,12 +29,14 @@
 #include <dirent.h>         /* readdir */
 #include <sys/utsname.h>    /* uname */
 #include <curl/curl.h>      /* libcurl */
+#include <unistd.h>         /* gethostname */
 
 
 int EnactAgent(ENACT_EVIDENCE *data, ENACT_FILES *files, ENACT_TPM *tpm, int onboard);
 
 static char uid[UUID_V4_SIZE];
 static char nodeid[UUID_V4_SIZE];
+static char hostname[HOST_NAME_MAX];
 
 /* EnactTrust has four tiers:
  *
@@ -180,6 +182,7 @@ int agent_onboarding(CURL *curl, ENACT_TPM *tpm)
     CURLcode res;
     curl_mime *form = NULL;
     curl_mimepart *field = NULL;
+    size_t len = 0;
 
     ret = tpm_exportEccPubToPem(tpm, &pem, ENACT_AKPEM_FILENAME);
     if(ret == TPM_RC_SUCCESS) {
@@ -193,6 +196,12 @@ int agent_onboarding(CURL *curl, ENACT_TPM *tpm)
         store_pem(&pem, ENACT_EKPEM_FILENAME);
         if(verbose) printf("EKpub prepared to enroll.\n");
     }
+
+    ret = gethostname(hostname, sizeof(hostname));
+    if(ret != 0) {
+        strncpy(hostname, "UnknownHost", sizeof(hostname));
+    }
+    len = strlen(hostname);
 
     if(curl) {
         form = curl_mime_init(curl);
@@ -213,6 +222,10 @@ int agent_onboarding(CURL *curl, ENACT_TPM *tpm)
         field = curl_mime_addpart(form);
         curl_mime_name(field, ENACT_API_PEM_ARG_UID);
         curl_mime_data(field, (const char *)uid, sizeof(uid));
+
+        field = curl_mime_addpart(form);
+        curl_mime_name(field, ENACT_API_PEM_ARG_HOSTNAME);
+        curl_mime_data(field, (const char *)hostname, len);
 
         curl_easy_setopt(curl, CURLOPT_URL, URL_NODE_PEM);
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
