@@ -27,18 +27,13 @@ Please check the [INSTALL.md](INSTALL.md) file for step by step instructions. Sh
 1. enact onboard A3S_USER_ID (see above step)
 1. enact
 
-If you're familiar with attesattino and are comfortable with looking at C code, you can also try out the [**EnactTrust API**](enact-api.c) which is aimed primarily at 3rd party integrations.
+If you're familiar with attestation and are comfortable with looking at C code, you can also try out the [**EnactTrust API**](enact-api.c) which is aimed primarily at 3rd party integrations.
 
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/6129df878b364f9ca7c09d72ffe852bf)](https://www.codacy.com/gh/EnactTrust/enact/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=EnactTrust/enact&amp;utm_campaign=Badge_Grade)
 
 ## Requirements
 
-EnactTrust is built for the *IoT & Edge devices* that live in the field for 3/5/10 years, therefore our implementation is highly portable. This includes:
-* Industrial IoT
-* Edge gateways
-* Automotive IoT
-* Infrastructure IoT
-* many others
+EnactTrust is built for the *IoT & Edge devices* that live in the field for 3/5/10 years, therefore our implementation is highly portable.
 
 EnactTrust supports the most popular firmware architectures and the major RTOS solutions, including FreeRTOS, Zephyr and others:
 
