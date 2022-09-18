@@ -33,9 +33,7 @@ If you're familiar with attestation and are comfortable with looking at C code, 
 
 ## Requirements
 
-EnactTrust is built for the *IoT & Edge devices* that live in the field for 3/5/10 years, therefore our implementation is highly portable.
-
-EnactTrust supports the most popular firmware architectures and the major RTOS solutions, including FreeRTOS, Zephyr and others:
+EnactTrust is built for the *IoT & Edge devices* that live in the field for 3/5/10 years, therefore our implementation is highly portable and EnactTrust supports the most popular firmware architectures. Including the major RTOS solutions, like FreeRTOS, Zephyr and others:
 
 | Architecture          | EnactTrust   | QuickStart   |
 | --------------------- | ------------ | ------------ |
