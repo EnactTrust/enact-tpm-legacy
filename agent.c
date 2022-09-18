@@ -369,7 +369,7 @@ int fs_listFiles(ENACT_FILES *files)
 
     d = opendir(ENACT_DEMO_PATH);
     if(d != NULL) {
-        printf("Protecting folder %s\n", ENACT_DEMO_PATH);
+        if(verbose) printf("Protecting folder %s\n", ENACT_DEMO_PATH);
         for(i = 0; i < MAX_FILE_COUNT; i++) {
             dir = readdir(d);
             if(dir == NULL) {
@@ -390,17 +390,15 @@ int fs_listFiles(ENACT_FILES *files)
         }
     }
     else {
-        printf("Protecting file %s\n", ENACT_DEMO_FILE);
+        if(verbose) printf("Protecting file %s\n", ENACT_DEMO_FILE);
         /* Special case: protect Linux user list */
-        strncpy(files->name[0], ENACT_DEMO_FILE, sizeof(files->name[0]));
+        strncpy(files->name[files->count], ENACT_DEMO_FILE, sizeof(files->name[files->count]));
         files->count++;
     }
 
-    if(verbose) {
-        printf("List of regular files(%d):\n", files->count);
-        for(int i = 0; i < files->count; i++) {
-           printf("%s \n", files->name[i]);
-        }
+    printf("List of protected files(%d):\n", files->count);
+    for(int i = 0; i < files->count; i++) {
+        printf("%s \n", files->name[i]);
     }
 
     if(files->count > 0) {
@@ -602,10 +600,10 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
 #endif /* ENACT_TPM_GPIO_ENABLE */
 
     if(ret == ENACT_SUCCESS) {
-        printf("OK. Evidence created and sent. No action required.\n");
+        printf("\nOK. Evidence created and sent. No action required.\n");
     }
     else {
-        printf("Error %d. Please contact us at support@enacttrust.com\n", ret);
+        printf("\nError %d. Please contact us at support@enacttrust.com\n", ret);
     }
 
 exit:
