@@ -60,9 +60,9 @@ Note: EnactTrust is meant to run in a memory isolated environment, so it can pro
 
 Here is the complete list of EnactTrust versions:
 
-*   Quick start - Basic attestation for 1 node (this version).
-*   Developer - Advanced attestation for 5 nodes.
-*   Enterprise - Protecting IoT products during their entire lifecycle, ZeroTrust security model for critical infrastructure, available on premise and as a managed service, EnactTrust agent deployed in memory isolation to protect the system even in the case of an attack.
+- Quick start - Basic attestation for 1 node (this version).
+- Developer - Advanced attestation for 5 nodes.
+- Enterprise - Protecting IoT products during their entire lifecycle, ZeroTrust security model for critical infrastructure, available on premise and as a managed service, EnactTrust agent deployed in memory isolation to protect the system even in the case of an attack.
 
 ## History
 
