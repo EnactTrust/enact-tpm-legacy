@@ -29,12 +29,14 @@
 #include <dirent.h>         /* readdir */
 #include <sys/utsname.h>    /* uname */
 #include <curl/curl.h>      /* libcurl */
+#include <unistd.h>         /* gethostname */
 
 
 int EnactAgent(ENACT_EVIDENCE *data, ENACT_FILES *files, ENACT_TPM *tpm, int onboard);
 
 static char uid[UUID_V4_SIZE];
 static char nodeid[UUID_V4_SIZE];
+static char hostname[HOST_NAME_MAX];
 
 /* EnactTrust has four tiers:
  *
@@ -180,6 +182,7 @@ int agent_onboarding(CURL *curl, ENACT_TPM *tpm)
     CURLcode res;
     curl_mime *form = NULL;
     curl_mimepart *field = NULL;
+    size_t len = 0;
 
     ret = tpm_exportEccPubToPem(tpm, &pem, ENACT_AKPEM_FILENAME);
     if(ret == TPM_RC_SUCCESS) {
@@ -193,6 +196,12 @@ int agent_onboarding(CURL *curl, ENACT_TPM *tpm)
         store_pem(&pem, ENACT_EKPEM_FILENAME);
         if(verbose) printf("EKpub prepared to enroll.\n");
     }
+
+    ret = gethostname(hostname, sizeof(hostname));
+    if(ret != 0) {
+        strncpy(hostname, "UnknownHost", sizeof(hostname));
+    }
+    len = strlen(hostname);
 
     if(curl) {
         form = curl_mime_init(curl);
@@ -213,6 +222,10 @@ int agent_onboarding(CURL *curl, ENACT_TPM *tpm)
         field = curl_mime_addpart(form);
         curl_mime_name(field, ENACT_API_PEM_ARG_UID);
         curl_mime_data(field, (const char *)uid, sizeof(uid));
+
+        field = curl_mime_addpart(form);
+        curl_mime_name(field, ENACT_API_PEM_ARG_HOSTNAME);
+        curl_mime_data(field, (const char *)hostname, len);
 
         curl_easy_setopt(curl, CURLOPT_URL, URL_NODE_PEM);
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
@@ -369,7 +382,7 @@ int fs_listFiles(ENACT_FILES *files)
 
     d = opendir(ENACT_DEMO_PATH);
     if(d != NULL) {
-        printf("Protecting folder %s\n", ENACT_DEMO_PATH);
+        if(verbose) printf("Protecting folder %s\n", ENACT_DEMO_PATH);
         for(i = 0; i < MAX_FILE_COUNT; i++) {
             dir = readdir(d);
             if(dir == NULL) {
@@ -390,17 +403,15 @@ int fs_listFiles(ENACT_FILES *files)
         }
     }
     else {
-        printf("Protecting file %s\n", ENACT_DEMO_FILE);
+        if(verbose) printf("Protecting file %s\n", ENACT_DEMO_FILE);
         /* Special case: protect Linux user list */
-        strncpy(files->name[0], ENACT_DEMO_FILE, sizeof(files->name[0]));
+        strncpy(files->name[files->count], ENACT_DEMO_FILE, sizeof(files->name[files->count]));
         files->count++;
     }
 
-    if(verbose) {
-        printf("List of regular files(%d):\n", files->count);
-        for(int i = 0; i < files->count; i++) {
-           printf("%s \n", files->name[i]);
-        }
+    printf("List of protected files(%d):\n", files->count);
+    for(int i = 0; i < files->count; i++) {
+        printf("%s \n", files->name[i]);
     }
 
     if(files->count > 0) {
@@ -602,10 +613,10 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
 #endif /* ENACT_TPM_GPIO_ENABLE */
 
     if(ret == ENACT_SUCCESS) {
-        printf("OK. Evidence created and sent. No action required.\n");
+        printf("\nOK. Evidence created and sent. No action required.\n");
     }
     else {
-        printf("Error %d. Please contact us at support@enacttrust.com\n", ret);
+        printf("\nError %d. Please contact us at support@enacttrust.com\n", ret);
     }
 
 exit:
