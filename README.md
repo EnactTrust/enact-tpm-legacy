@@ -5,9 +5,9 @@
 # Security and compliance for IoT & Edge systems
 
 Typical use cases are:
-- offline protection of IoT devices in the field
+- protection of IoT devices in the field (including offline)
 - monitoring of the device health of Edge devices
-- compliance for Industrial IoT and Automotive systems
+- compliance with IEC 62443 for Industrial IoT systems
 
 To learn more about EnactTrust, [read our **whitepaper**](https://enact-public.s3.eu-west-1.amazonaws.com/STMicroelectronics+-+EnactTrust+-+Whitepaper+-+Embedded+World+2022.pdf).
 
