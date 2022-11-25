@@ -284,10 +284,15 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *evidence)
     quoteCmd.signHandle = tpm->ak.handle.hndl;
     quoteCmd.inScheme.scheme = TPM_ALG_ECDSA;
     quoteCmd.inScheme.details.any.hashAlg = TPM_ALG_SHA256;
-    quoteCmd.qualifyingData.size = sizeof(evidence->nodeid);
+    quoteCmd.qualifyingData.size = sizeof(evidence->nodeid) + ENACT_NONCE_SIZE;
+    /* Prepare nonce */
     XMEMCPY((byte*)&quoteCmd.qualifyingData.buffer,
+            (byte*)&evidence->nonce,
+            ENACT_NONCE_SIZE);
+    /* Prepare nodeid */
+    XMEMCPY((byte*)&quoteCmd.qualifyingData.buffer[ENACT_NONCE_SIZE],
             (byte*)&evidence->nodeid,
-            quoteCmd.qualifyingData.size);
+            sizeof(evidence->nodeid);
 
     wolfTPM2_SetAuthPassword(&tpm->dev, 0, NULL);
     wolfTPM2_UnsetAuth(&tpm->dev, 1);
@@ -526,10 +531,15 @@ int tpm_gpio_certify(ENACT_TPM *tpm, ENACT_EVIDENCE *evidence, int gpio)
     nvCmd.signHandle = tpm->ak.handle.hndl;
     nvCmd.authHandle = tpm->gpio.nvParent.hndl;
     nvCmd.nvIndex = tpm->gpio.nvIndex;
-    nvCmd.qualifyingData.size = sizeof(evidence->nodeid);
+    nvCmd.qualifyingData.size = sizeof(evidence->nodeid) + ENACT_NONCE_SIZE;
+    /* Prepare nonce */
     XMEMCPY((byte*)&nvCmd.qualifyingData.buffer,
+            (byte*)&evidence->nonce,
+            ENACT_NONCE_SIZE);
+    /* Prepare nodeid */
+    XMEMCPY((byte*)&quoteCmd.qualifyingData.buffer[ENACT_NONCE_SIZE],
             (byte*)&evidence->nodeid,
-            nvCmd.qualifyingData.size);
+            sizeof(evidence->nodeid);
     nvCmd.inScheme.scheme = TPM_ALG_ECDSA;
     nvCmd.inScheme.details.any.hashAlg = TPM_ALG_SHA256;
     nvCmd.offset = 0;
