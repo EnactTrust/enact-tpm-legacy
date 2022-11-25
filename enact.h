@@ -88,6 +88,7 @@ typedef struct ENACT_TPM {
 
 typedef struct ENACT_EVIDENCE {
     char nodeid[UUID_V4_BYTES];
+    char nonce[ENACT_NONCE_SIZE]
     TPM2B_ATTEST raw;
     TPMS_ATTEST data;
     TPMT_SIGNATURE signature;
