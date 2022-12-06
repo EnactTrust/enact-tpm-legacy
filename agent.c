@@ -288,6 +288,39 @@ int agent_sendEkCert(CURL *curl, ENACT_TPM *tpm)
     return ret;
 }
 
+int agent_session(CURL *curl)
+{
+    int ret = ENACT_ERROR;
+    CURLcode res;
+    curl_mime *form = NULL;
+    curl_mimepart *field = NULL;
+
+    if(curl) {
+        form = curl_mime_init(curl);
+
+        field = curl_mime_addpart(form);
+        curl_mime_name(field, ENACT_API_GOLDEN_ARG_NODEID);
+        curl_mime_filedata(field, ENACT_NODEID_TEMPFILE);
+
+        curl_easy_setopt(curl, CURLOPT_URL, URL_NODE_SECRET);
+        curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, ENACT_NONCE_FILENAME);
+
+        res = curl_easy_perform(curl);
+        if(res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                    curl_easy_strerror(res));
+        }
+        else {
+            ret = ENACT_SUCCESS;
+        }
+    }
+
+    curl_easy_reset(curl);
+    curl_mime_free(form);
+    return ret;
+}
+
 int agent_sendGolden(CURL *curl)
 {
     int ret = ENACT_ERROR;

@@ -286,7 +286,7 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *evidence)
     /* Prepare nodeid */
     XMEMCPY((byte*)&quoteCmd.qualifyingData.buffer[ENACT_NONCE_SIZE],
             (byte*)&evidence->nodeid,
-            sizeof(evidence->nodeid);
+            sizeof(evidence->nodeid));
 
     wolfTPM2_SetAuthPassword(&tpm->dev, 0, NULL);
     wolfTPM2_UnsetAuth(&tpm->dev, 1);

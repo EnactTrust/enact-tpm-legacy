@@ -47,7 +47,9 @@
 #define ENACT_TPM_HANDLE_SRK    0x81010010
 #define ENACT_TPM_HANDLE_AK     0x81010011
 #define ENACT_TPM_HANDLE_NVRAM  0x0180020A
+#define ENACT_NONCE_SIZE        16
 
+#define ENACT_NONCE_FILENAME "nonce.blob\0"
 #define ENACT_QUOTE_FILENAME "evidence.blob\0"
 #define ENACT_QUOTE_SIGNATURE_FILENAME "signature.blob\0"
 #define ENACT_GPIO_FILENAME "gpio.blob\0"
@@ -88,7 +90,7 @@ typedef struct ENACT_TPM {
 
 typedef struct ENACT_EVIDENCE {
     char nodeid[UUID_V4_BYTES];
-    char nonce[ENACT_NONCE_SIZE]
+    char nonce[ENACT_NONCE_SIZE];
     TPM2B_ATTEST raw;
     TPMS_ATTEST data;
     TPMT_SIGNATURE signature;
