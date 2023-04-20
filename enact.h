@@ -60,8 +60,8 @@
 #define ENACT_EKPEM_FILENAME "ek.pem\0"
 #define ENACT_EKCERT_FILENAME "ek.cert\0"
 #define ENACT_NODEID_TEMPFILE "node.id\0"
-#define ENACT_DEMO_PATH "/demo/\0"    /* Quick start protects this folder */
-#define ENACT_DEMO_FILE "/etc/passwd\0" /* Protect the Linux password file */
+#define ENACT_DEMO_PATH "./demo/\0" /* Quick start protects this folder or */
+#define ENACT_DEMO_FILE "/etc/passwd\0" /* protects the Linux password file */
 
 #define MAX_FILE_COUNT 20
 #define MAX_FILE_NAME 100
