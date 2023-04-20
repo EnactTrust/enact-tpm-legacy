@@ -19,7 +19,6 @@
  * along with EnactTrust. If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #include "enact.h"
 #include "tpm.h"
 #include "misc.h"
@@ -31,6 +30,9 @@
 #include <curl/curl.h>      /* libcurl */
 #include <unistd.h>         /* gethostname */
 
+#ifndef HOST_NAME_MAX /* MacOS does not have this defined */
+#define HOST_NAME_MAX 255
+#endif
 
 int EnactAgent(ENACT_EVIDENCE *data, ENACT_FILES *files, ENACT_TPM *tpm, int onboard);
 
@@ -431,10 +433,16 @@ int fs_storeEvidence(ENACT_EVIDENCE *evidence, const char *filename)
     retSize = expectedSize = 0;
     fp = XFOPEN(filename, "wb");
     if(fp != XBADFILE) {
-        fileSize = sizeof(evidence->raw.size);
-        expectedSize = sizeof(evidence->raw.size);
-        ret = XFWRITE((BYTE*)&evidence->raw.size, 1, fileSize, fp);
+#ifdef VERAISON_ENABLED
+        fileSize = sizeof(evidence->nodeid);
+        expectedSize = sizeof(evidence->nodeid);
+        ret = XFWRITE((BYTE*)&evidence->nodeid, 1, fileSize, fp);
         retSize = ret;
+#endif /* VERAISON_ENABLED */
+        fileSize = sizeof(evidence->raw.size);
+        expectedSize += sizeof(evidence->raw.size);
+        ret = XFWRITE((BYTE*)&evidence->raw.size, 1, fileSize, fp);
+        retSize += ret;
 
         fileSize = (int)evidence->raw.size;
         expectedSize += evidence->raw.size;
