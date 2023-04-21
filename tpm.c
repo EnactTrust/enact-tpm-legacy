@@ -33,7 +33,11 @@
 #include "enact.h"
 #include "tpm.h"
 
+#ifdef DEBUG_PRINTS
+static int verbose = 1;
+#else
 static int verbose = 0;
+#endif
 
 #define FILE_CHUNK_SIZE 1024 /* Size of the chunk used to process files */
 #define DER_SIZE 256 /* Size of DER formatted output */
@@ -257,8 +261,10 @@ int tpm_pcrExtend(ENACT_FILES *files, UINT32 pcrIndex)
             ret = ENACT_SUCCESS;
         }
         else {
-            if(verbose) printf("PCR Extend failed\n");
-            tpm_printError(verbose, ret);
+            if(verbose) {
+                printf("PCR Extend failed\n");
+                tpm_printError(verbose, ret);
+            }
         }
     }
 
@@ -320,6 +326,7 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *evidence)
     }
     else {
         if(verbose) printf("Failure to create evidence.\n");
+        tpm_printError(verbose, ret);
     }
 
     return ret;
