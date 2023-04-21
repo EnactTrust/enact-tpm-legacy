@@ -563,6 +563,9 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     ret = tpm_pcrReset(ENACT_TPM_QUOTE_PCR);
     if(ret == ENACT_SUCCESS) {
         ret = tpm_pcrExtend(files, ENACT_TPM_QUOTE_PCR);
+        if(ret != TPM_RC_SUCCESS) {
+            printf("Failed to perform PCR extend\n");
+        }
     }
     else {
         printf("Unable to prepare evidence\n");
@@ -574,6 +577,9 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
         misc_uuid_str2bin(nodeid, sizeof(nodeid), evidence->nodeid, sizeof(evidence->nodeid));
         /* Ask the TPM to prepare an evidence */
         ret = tpm_createQuote(tpm, evidence);
+        if(ret != TPM_RC_SUCCESS) {
+            printf("Failed to perform TPM quote\n");
+        }
     }
     else {
         printf("Unable to create evidence\n");
