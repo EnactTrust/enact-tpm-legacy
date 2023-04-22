@@ -765,7 +765,7 @@ int main(int argc, char *argv[])
     if(onboarding) {
         printf("\tOnboarding: %s\n", URL_NODE_PEM);
 #ifdef VERAISON_ENABLED
-        printf("\tSession: %s\n", URL_NODE_SESSION);
+        printf("\tSecret (Veraison Session): %s\n", URL_NODE_SECRET);
 #endif
         printf("\tGolden value: %s\n", URL_NODE_GOLDEN);
         printf("\tEK Cert: %s\n", URL_NODE_EKCERT);
