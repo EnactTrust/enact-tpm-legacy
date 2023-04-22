@@ -87,6 +87,31 @@ static int read_nodeid(ENACT_EVIDENCE *evidence, const char *filename)
     return ret;
 }
 
+#ifdef VERAISON_ENABLED
+static int read_nonce(ENACT_EVIDENCE *evidence, const char *filename)
+{
+    int ret = ENACT_ERROR;
+
+    if(evidence != NULL && filename != NULL) {
+        XFILE fp = NULL;
+        int len;
+
+        fp = XFOPEN(filename, "rb");
+        if(fp != XBADFILE) {
+            len = XFREAD((byte*)&evidence->nonce, 1, sizeof(evidence->nonce), fp);
+            if(len == sizeof(evidence->nonce)) {
+                ret = ENACT_SUCCESS;
+            }
+        }
+    }
+    else {
+        ret = BAD_ARG;
+    }
+
+    return ret;
+}
+#endif /* VERAISON_ENABLED */
+
 static int store_pem(ENACT_PEM *pem, const char *filename)
 {
     int ret = ENACT_ERROR;
@@ -608,6 +633,10 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     if(ret == ENACT_SUCCESS) {
         /* Convert from string ot binary for use in Evidence later */
         misc_uuid_str2bin(nodeid, sizeof(nodeid), evidence->nodeid, sizeof(evidence->nodeid));
+#ifdef VERAISON_ENABLED
+        agent_session(curl);
+        read_nonce(evidence, ENACT_NONCE_FILENAME);
+#endif
         /* Ask the TPM to prepare an evidence */
         ret = tpm_createQuote(tpm, evidence);
         if(ret != TPM_RC_SUCCESS) {
