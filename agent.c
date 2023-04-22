@@ -147,9 +147,9 @@ size_t pem_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
         fp = XFOPEN(ENACT_NODEID_TEMPFILE, "wt");
         if(fp != XBADFILE) {
             size_t fileSize = XFWRITE(ptr, 1, (size * nmemb), fp);
-            if(fileSize == size) {
+            if(fileSize == size * nmemb) {
                 int i;
-                printf("New NodeID is:\n");
+                printf("\nNew NodeID is:\n");
                 for(i=0;  i<nmemb; i++) {
                     putchar(ptr[i]);
                 }
@@ -469,7 +469,7 @@ int fs_listFiles(ENACT_FILES *files)
         files->count++;
     }
 
-    printf("List of protected files(%d):\n", files->count);
+    printf("\nList of protected files(%d):\n", files->count);
     for(int i = 0; i < files->count; i++) {
         printf("%s \n", files->name[i]);
     }
@@ -763,16 +763,18 @@ int main(int argc, char *argv[])
 
     printf("EnactTrust endpoints in use:\n");
     if(onboarding) {
-        printf("Onboarding: %s\n", URL_NODE_PEM);
-        printf("Golden value: %s\n", URL_NODE_GOLDEN);
-        printf("EK Cert: %s\n", URL_NODE_EKCERT);
+        printf("\tOnboarding: %s\n", URL_NODE_PEM);
+#ifdef VERAISON_ENABLED
+        printf("\tSession: %s\n", URL_NODE_SESSION);
+#endif
+        printf("\tGolden value: %s\n", URL_NODE_GOLDEN);
+        printf("\tEK Cert: %s\n", URL_NODE_EKCERT);
     }
     else {
-        printf("Fresh evidence: %s\n", URL_NODE_EVIDENCE);
+        printf("\tFresh evidence: %s\n", URL_NODE_EVIDENCE);
     #ifdef ENACT_TPM_GPIO_ENABLE
-        printf("GPIO evidence: %s\n", URL_NODE_GPIOEVID);
+        printf("\tGPIO evidence: %s\n", URL_NODE_GPIOEVID);
     #endif
-        printf("\n");
     }
 
     /* Configure as a service, or execute an action */
