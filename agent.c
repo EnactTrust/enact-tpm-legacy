@@ -609,8 +609,10 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
         tpm_gpio_config(tpm, TPM_GPIO_A);
         tpm_gpio_read(tpm, TPM_GPIO_A);
 #endif /* ENACT_TPM_GPIO_ENABLE */
+#ifndef VERAISON_ENABLED /* EK Cert is handled only by EnactTrust A3S */
         /* Send EK Certificate for TPM Manufacturer identification */
         agent_sendEkCert(curl, tpm);
+#endif
     }
     else {
         /* Read nodeID to prepare for use later, in evidence */
