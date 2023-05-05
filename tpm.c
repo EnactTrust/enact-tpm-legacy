@@ -33,7 +33,11 @@
 #include "enact.h"
 #include "tpm.h"
 
+#ifdef DEBUG_PRINTS
+static int verbose = 1;
+#else
 static int verbose = 0;
+#endif
 
 #define FILE_CHUNK_SIZE 1024 /* Size of the chunk used to process files */
 #define DER_SIZE 256 /* Size of DER formatted output */
@@ -257,8 +261,10 @@ int tpm_pcrExtend(ENACT_FILES *files, UINT32 pcrIndex)
             ret = ENACT_SUCCESS;
         }
         else {
-            if(verbose) printf("PCR Extend failed\n");
-            tpm_printError(verbose, ret);
+            if(verbose) {
+                printf("PCR Extend failed\n");
+                tpm_printError(verbose, ret);
+            }
         }
     }
 
@@ -278,10 +284,19 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *evidence)
     quoteCmd.signHandle = tpm->ak.handle.hndl;
     quoteCmd.inScheme.scheme = TPM_ALG_ECDSA;
     quoteCmd.inScheme.details.any.hashAlg = TPM_ALG_SHA256;
-    quoteCmd.qualifyingData.size = sizeof(evidence->nodeid);
+#ifdef VERAISON_ENABLED
+    quoteCmd.qualifyingData.size = ENACT_NONCE_SIZE;
+    /* Prepare nonce */
+    XMEMCPY((byte*)&quoteCmd.qualifyingData.buffer,
+            (byte*)&evidence->nonce,
+            ENACT_NONCE_SIZE);
+#else /* EnactTrust A3S */
+    quoteCmd.qualifyingData.size = UUID_V4_BYTES;
+    /* Prepare nodeid */
     XMEMCPY((byte*)&quoteCmd.qualifyingData.buffer,
             (byte*)&evidence->nodeid,
-            quoteCmd.qualifyingData.size);
+            UUID_V4_BYTES);
+#endif
 
     wolfTPM2_SetAuthPassword(&tpm->dev, 0, NULL);
     wolfTPM2_UnsetAuth(&tpm->dev, 1);
@@ -315,6 +330,7 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *evidence)
     }
     else {
         if(verbose) printf("Failure to create evidence.\n");
+        tpm_printError(verbose, ret);
     }
 
     return ret;
@@ -519,10 +535,19 @@ int tpm_gpio_certify(ENACT_TPM *tpm, ENACT_EVIDENCE *evidence, int gpio)
     nvCmd.signHandle = tpm->ak.handle.hndl;
     nvCmd.authHandle = tpm->gpio.nvParent.hndl;
     nvCmd.nvIndex = tpm->gpio.nvIndex;
-    nvCmd.qualifyingData.size = sizeof(evidence->nodeid);
+#ifdef VERAISON_ENABLED
+    nvCmd.qualifyingData.size = ENACT_NONCE_SIZE;
+    /* Prepare nonce */
     XMEMCPY((byte*)&nvCmd.qualifyingData.buffer,
+            (byte*)&evidence->nonce,
+            ENACT_NONCE_SIZE);
+#else /* EnactTrust A3S */
+    nvCmd.qualifyingData.size = UUID_V4_BYTES;
+    /* Prepare nodeid */
+    XMEMCPY((byte*)&quoteCmd.qualifyingData.buffer,
             (byte*)&evidence->nodeid,
-            nvCmd.qualifyingData.size);
+            UUID_V4_BYTES);
+#endif
     nvCmd.inScheme.scheme = TPM_ALG_ECDSA;
     nvCmd.inScheme.details.any.hashAlg = TPM_ALG_SHA256;
     nvCmd.offset = 0;

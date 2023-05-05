@@ -19,7 +19,6 @@
  * along with EnactTrust. If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #include "enact.h"
 #include "tpm.h"
 #include "misc.h"
@@ -31,6 +30,9 @@
 #include <curl/curl.h>      /* libcurl */
 #include <unistd.h>         /* gethostname */
 
+#ifndef HOST_NAME_MAX /* MacOS does not have this defined */
+#define HOST_NAME_MAX 255
+#endif
 
 int EnactAgent(ENACT_EVIDENCE *data, ENACT_FILES *files, ENACT_TPM *tpm, int onboard);
 
@@ -85,6 +87,31 @@ static int read_nodeid(ENACT_EVIDENCE *evidence, const char *filename)
     return ret;
 }
 
+#ifdef VERAISON_ENABLED
+static int read_nonce(ENACT_EVIDENCE *evidence, const char *filename)
+{
+    int ret = ENACT_ERROR;
+
+    if(evidence != NULL && filename != NULL) {
+        XFILE fp = NULL;
+        int len;
+
+        fp = XFOPEN(filename, "rb");
+        if(fp != XBADFILE) {
+            len = XFREAD((byte*)&evidence->nonce, 1, sizeof(evidence->nonce), fp);
+            if(len == sizeof(evidence->nonce)) {
+                ret = ENACT_SUCCESS;
+            }
+        }
+    }
+    else {
+        ret = BAD_ARG;
+    }
+
+    return ret;
+}
+#endif /* VERAISON_ENABLED */
+
 static int store_pem(ENACT_PEM *pem, const char *filename)
 {
     int ret = ENACT_ERROR;
@@ -120,9 +147,9 @@ size_t pem_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
         fp = XFOPEN(ENACT_NODEID_TEMPFILE, "wt");
         if(fp != XBADFILE) {
             size_t fileSize = XFWRITE(ptr, 1, (size * nmemb), fp);
-            if(fileSize == size) {
+            if(fileSize == size * nmemb) {
                 int i;
-                printf("New NodeID is:\n");
+                printf("\nNew NodeID is:\n");
                 for(i=0;  i<nmemb; i++) {
                     putchar(ptr[i]);
                 }
@@ -288,6 +315,39 @@ int agent_sendEkCert(CURL *curl, ENACT_TPM *tpm)
     return ret;
 }
 
+int agent_session(CURL *curl)
+{
+    int ret = ENACT_ERROR;
+    CURLcode res;
+    curl_mime *form = NULL;
+    curl_mimepart *field = NULL;
+
+    if(curl) {
+        form = curl_mime_init(curl);
+
+        field = curl_mime_addpart(form);
+        curl_mime_name(field, ENACT_API_GOLDEN_ARG_NODEID);
+        curl_mime_filedata(field, ENACT_NODEID_TEMPFILE);
+
+        curl_easy_setopt(curl, CURLOPT_URL, URL_NODE_SECRET);
+        curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, ENACT_NONCE_FILENAME);
+
+        res = curl_easy_perform(curl);
+        if(res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                    curl_easy_strerror(res));
+        }
+        else {
+            ret = ENACT_SUCCESS;
+        }
+    }
+
+    curl_easy_reset(curl);
+    curl_mime_free(form);
+    return ret;
+}
+
 int agent_sendGolden(CURL *curl)
 {
     int ret = ENACT_ERROR;
@@ -409,7 +469,7 @@ int fs_listFiles(ENACT_FILES *files)
         files->count++;
     }
 
-    printf("List of protected files(%d):\n", files->count);
+    printf("\nList of protected files(%d):\n", files->count);
     for(int i = 0; i < files->count; i++) {
         printf("%s \n", files->name[i]);
     }
@@ -431,10 +491,16 @@ int fs_storeEvidence(ENACT_EVIDENCE *evidence, const char *filename)
     retSize = expectedSize = 0;
     fp = XFOPEN(filename, "wb");
     if(fp != XBADFILE) {
-        fileSize = sizeof(evidence->raw.size);
-        expectedSize = sizeof(evidence->raw.size);
-        ret = XFWRITE((BYTE*)&evidence->raw.size, 1, fileSize, fp);
+#ifdef VERAISON_ENABLED
+        fileSize = sizeof(evidence->nodeid);
+        expectedSize = sizeof(evidence->nodeid);
+        ret = XFWRITE((BYTE*)&evidence->nodeid, 1, fileSize, fp);
         retSize = ret;
+#endif /* VERAISON_ENABLED */
+        fileSize = sizeof(evidence->raw.size);
+        expectedSize += sizeof(evidence->raw.size);
+        ret = XFWRITE((BYTE*)&evidence->raw.size, 1, fileSize, fp);
+        retSize += ret;
 
         fileSize = (int)evidence->raw.size;
         expectedSize += evidence->raw.size;
@@ -543,8 +609,10 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
         tpm_gpio_config(tpm, TPM_GPIO_A);
         tpm_gpio_read(tpm, TPM_GPIO_A);
 #endif /* ENACT_TPM_GPIO_ENABLE */
+#ifndef VERAISON_ENABLED /* EK Cert is handled only by EnactTrust A3S */
         /* Send EK Certificate for TPM Manufacturer identification */
         agent_sendEkCert(curl, tpm);
+#endif
     }
     else {
         /* Read nodeID to prepare for use later, in evidence */
@@ -555,6 +623,9 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     ret = tpm_pcrReset(ENACT_TPM_QUOTE_PCR);
     if(ret == ENACT_SUCCESS) {
         ret = tpm_pcrExtend(files, ENACT_TPM_QUOTE_PCR);
+        if(ret != TPM_RC_SUCCESS) {
+            printf("Failed to perform PCR extend\n");
+        }
     }
     else {
         printf("Unable to prepare evidence\n");
@@ -564,8 +635,15 @@ int EnactAgent(ENACT_EVIDENCE *evidence, ENACT_FILES *files, ENACT_TPM *tpm, int
     if(ret == ENACT_SUCCESS) {
         /* Convert from string ot binary for use in Evidence later */
         misc_uuid_str2bin(nodeid, sizeof(nodeid), evidence->nodeid, sizeof(evidence->nodeid));
+#ifdef VERAISON_ENABLED
+        agent_session(curl);
+        read_nonce(evidence, ENACT_NONCE_FILENAME);
+#endif
         /* Ask the TPM to prepare an evidence */
         ret = tpm_createQuote(tpm, evidence);
+        if(ret != TPM_RC_SUCCESS) {
+            printf("Failed to perform TPM quote\n");
+        }
     }
     else {
         printf("Unable to create evidence\n");
@@ -687,16 +765,18 @@ int main(int argc, char *argv[])
 
     printf("EnactTrust endpoints in use:\n");
     if(onboarding) {
-        printf("Onboarding: %s\n", URL_NODE_PEM);
-        printf("Golden value: %s\n", URL_NODE_GOLDEN);
-        printf("EK Cert: %s\n", URL_NODE_EKCERT);
+        printf("\tOnboarding: %s\n", URL_NODE_PEM);
+#ifdef VERAISON_ENABLED
+        printf("\tSecret (Veraison Session): %s\n", URL_NODE_SECRET);
+#endif
+        printf("\tGolden value: %s\n", URL_NODE_GOLDEN);
+        printf("\tEK Cert: %s\n", URL_NODE_EKCERT);
     }
     else {
-        printf("Fresh evidence: %s\n", URL_NODE_EVIDENCE);
+        printf("\tFresh evidence: %s\n", URL_NODE_EVIDENCE);
     #ifdef ENACT_TPM_GPIO_ENABLE
-        printf("GPIO evidence: %s\n", URL_NODE_GPIOEVID);
+        printf("\tGPIO evidence: %s\n", URL_NODE_GPIOEVID);
     #endif
-        printf("\n");
     }
 
     /* Configure as a service, or execute an action */

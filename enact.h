@@ -29,8 +29,8 @@
     extern "C" {
 #endif
 
-#define ENACT_VERSION_STRING "0.6.7"
-#define ENACT_VERSION_HEX 0x00006070
+#define ENACT_VERSION_STRING "0.7.0"
+#define ENACT_VERSION_HEX 0x00007000
 
 /* Return codes */
 #define ENACT_SUCCESS        0
@@ -47,7 +47,9 @@
 #define ENACT_TPM_HANDLE_SRK    0x81010010
 #define ENACT_TPM_HANDLE_AK     0x81010011
 #define ENACT_TPM_HANDLE_NVRAM  0x0180020A
+#define ENACT_NONCE_SIZE        16
 
+#define ENACT_NONCE_FILENAME "nonce.blob\0"
 #define ENACT_QUOTE_FILENAME "evidence.blob\0"
 #define ENACT_QUOTE_SIGNATURE_FILENAME "signature.blob\0"
 #define ENACT_GPIO_FILENAME "gpio.blob\0"
@@ -58,8 +60,8 @@
 #define ENACT_EKPEM_FILENAME "ek.pem\0"
 #define ENACT_EKCERT_FILENAME "ek.cert\0"
 #define ENACT_NODEID_TEMPFILE "node.id\0"
-#define ENACT_DEMO_PATH "/demo/\0"    /* Quick start protects this folder */
-#define ENACT_DEMO_FILE "/etc/passwd\0" /* Protect the Linux password file */
+#define ENACT_DEMO_PATH "./demo/\0" /* Quick start protects this folder or */
+#define ENACT_DEMO_FILE "/etc/passwd\0" /* protects the Linux password file */
 
 #define MAX_FILE_COUNT 20
 #define MAX_FILE_NAME 100
@@ -88,6 +90,7 @@ typedef struct ENACT_TPM {
 
 typedef struct ENACT_EVIDENCE {
     char nodeid[UUID_V4_BYTES];
+    char nonce[ENACT_NONCE_SIZE];
     TPM2B_ATTEST raw;
     TPMS_ATTEST data;
     TPMT_SIGNATURE signature;
