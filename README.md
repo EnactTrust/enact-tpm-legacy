@@ -11,9 +11,25 @@ Typical use cases are:
 
 To learn more about EnactTrust, [read our **whitepaper**](https://enact-public.s3.eu-west-1.amazonaws.com/STMicroelectronics+-+EnactTrust+-+Whitepaper+-+Embedded+World+2022.pdf).
 
+## Quick start
+
+Use this [Dockerfile](Dockerfile) to try EnactTrust in 3 minutes. All you need is a unique user id from https://a3s.enacttrust.com and these few commands:
+
+```
+docker build --tag enact .
+docker run -d -t --name enact-quickstart enact
+docker exec -it enact-quickstart sh
+$tpm_server &> tpm.log
+$enact onboard A3S_USER_ID
+```
+
+By default `EnactTrust` protects the Linux password file, and alerts for unauthorized changes to the system credentials and accounts.
+
+To send fresh evidence just execute `enact` without any parameters, because your system is already onboarded.
+
 ## Screenshots
 
-<a href="https://www.enacttrust.com/ew2022"><img alt="Boing Boing" src="https://uploads-ssl.webflow.com/62ac647209e552092604784f/62af56eae7ad8f51ef298187_enact-dashboard-ew2022.png"></a>
+<a href="https://www.enacttrust.com/ew2022"><img alt="EnactTrust screenshot" src="https://uploads-ssl.webflow.com/62ac647209e552092604784f/62af56eae7ad8f51ef298187_enact-dashboard-ew2022.png"></a>
 
 Explore device health by visiting the [EnactTrust Security Cloud](https://a3s.enacttrust.com).
 
@@ -24,7 +40,7 @@ Please check the [INSTALL.md](INSTALL.md) file for step by step instructions. Sh
 1. Git clone this repo
 1. Make
 1. Register at https://a3s.enacttrust.com 
-1. enact onboard A3S_USER_ID (see above step)
+1. enact onboard A3S_USER_ID (get user id from the step above)
 1. enact
 
 If you're familiar with attestation and are comfortable with looking at C code, you can also try out the [**EnactTrust API**](enact-api.c) which is aimed primarily at 3rd party integrations.
