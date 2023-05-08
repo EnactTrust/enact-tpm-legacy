@@ -29,8 +29,8 @@
     extern "C" {
 #endif
 
-#define ENACT_VERSION_STRING "0.7.0"
-#define ENACT_VERSION_HEX 0x00007000
+#define ENACT_VERSION_STRING "0.7.1"
+#define ENACT_VERSION_HEX 0x00007010
 
 /* Return codes */
 #define ENACT_SUCCESS        0
