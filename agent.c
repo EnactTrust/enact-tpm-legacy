@@ -321,17 +321,24 @@ int agent_session(CURL *curl)
     CURLcode res;
     curl_mime *form = NULL;
     curl_mimepart *field = NULL;
+    FILE *fp;
+
+    fp = XFOPEN(ENACT_NONCE_FILENAME, "wb");
+    if(fp == XBADFILE) {
+        printf("Error while creating a nonce file\n");
+        return ret;
+    }
 
     if(curl) {
         form = curl_mime_init(curl);
 
         field = curl_mime_addpart(form);
         curl_mime_name(field, ENACT_API_GOLDEN_ARG_NODEID);
-        curl_mime_filedata(field, ENACT_NODEID_TEMPFILE);
+        curl_mime_data(field, (const char *)nodeid, sizeof(nodeid));
 
         curl_easy_setopt(curl, CURLOPT_URL, URL_NODE_SECRET);
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, ENACT_NONCE_FILENAME);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
         res = curl_easy_perform(curl);
         if(res != CURLE_OK) {
@@ -345,6 +352,7 @@ int agent_session(CURL *curl)
 
     curl_easy_reset(curl);
     curl_mime_free(form);
+    fclose(fp);
     return ret;
 }
 
