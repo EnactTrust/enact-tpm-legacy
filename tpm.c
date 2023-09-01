@@ -281,6 +281,7 @@ int tpm_createQuote(ENACT_TPM *tpm, ENACT_EVIDENCE *evidence)
         return BAD_ARG;
     }
 
+    memset(&quoteCmd, 0, sizeof(Quote_In));
     quoteCmd.signHandle = tpm->ak.handle.hndl;
     quoteCmd.inScheme.scheme = TPM_ALG_ECDSA;
     quoteCmd.inScheme.details.any.hashAlg = TPM_ALG_SHA256;
