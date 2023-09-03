@@ -36,7 +36,7 @@
 
 int EnactAgent(ENACT_EVIDENCE *data, ENACT_FILES *files, ENACT_TPM *tpm, int onboard);
 
-static char uid[UUID_V4_SIZE];
+static char userid[UUID_V4_SIZE];
 static char nodeid[UUID_V4_SIZE];
 static char hostname[HOST_NAME_MAX];
 
@@ -247,8 +247,8 @@ int agent_onboarding(CURL *curl, ENACT_TPM *tpm)
                        tpm->ak.handle.name.size);
 
         field = curl_mime_addpart(form);
-        curl_mime_name(field, ENACT_API_PEM_ARG_UID);
-        curl_mime_data(field, (const char *)uid, sizeof(uid));
+        curl_mime_name(field, ENACT_API_PEM_ARG_USERID);
+        curl_mime_data(field, (const char *)userid, sizeof(userid));
 
         field = curl_mime_addpart(form);
         curl_mime_name(field, ENACT_API_PEM_ARG_HOSTNAME);
@@ -717,8 +717,12 @@ exit:
 
 void usage(void) {
     printf("EnactTrust agent has these modes of operation:\n");
-    printf("\tenact onboard UID - Use to provision a new node\n");
-    printf("\t\tUID - Register at www.enacttrust.com for your user id.\n");
+#ifdef VERAISON_ENABLED
+    printf("\tenact onboard - Use to provision a new node in Veraison\n");
+#else
+    printf("\tenact onboard USERID - Use to provision a new node\n");
+    printf("\t\tUSERID - Register at www.enacttrust.com for your user id.\n");
+#endif
     printf("\tenact start - EnactTrust is configured as a Linux service\n");
     printf("\t\tThis way Enact can continiously monitor the system health\n");
     printf("\tenact - Generate a fresh evidence\n");
@@ -727,10 +731,10 @@ void usage(void) {
     printf("Please contact us at \"support@enacttrust.com\" for more information.\n");
 }
 
-void uid_usage(void) {
-    printf("Onboarding requires a user id(UID). Example usage with UID:\n");
+void userid_usage(void) {
+    printf("Onboarding requires a user id. Example usage:\n");
     printf("\n\t./enact onboard 68360761-b72f-4ba3-86c9-7156577a54da\n\n");
-    printf("UID can be acquired by registering at www.enacttrust.com\n");
+    printf("User id can be acquired by registering at www.enacttrust.com\n");
 }
 
 int main(int argc, char *argv[])
@@ -740,8 +744,9 @@ int main(int argc, char *argv[])
     ENACT_FILES files;
     ENACT_TPM tpm;
 
-    XMEMSET(uid, 0, sizeof(uid));
+    XMEMSET(userid, 0, sizeof(userid));
     XMEMSET(nodeid, 0, sizeof(nodeid));
+    XMEMSET(hostname, 0, sizeof(hostname));
 
     printf("EnactTrust agent v%s\n", ENACT_VERSION_STRING);
     printf("\n");
@@ -752,11 +757,15 @@ int main(int argc, char *argv[])
         if(XSTRNCMP(argv[1], "onboard", 7) == 0) {
             onboarding = 1;
             if(argc == 3) {
-                strncpy(uid, argv[2], sizeof(uid));
+                strncpy(userid, argv[2], sizeof(userid));
             }
             else {
-                uid_usage();
+#ifdef VERAISON_ENABLED
+                printf("Info: No user id supplied. User id is optional for Veraison\n\n");
+#else
+                userid_usage();
                 return BAD_ARG;
+#endif
             }
         }
         else if(XSTRNCMP(argv[1], "start", 5) == 0) {
