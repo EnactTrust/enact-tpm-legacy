@@ -2,8 +2,9 @@
   <img src="https://blog.enacttrust.com/assets/images/logo/enact-logo.png" width="75px" style="vertical-align:middle" style="float:left">
 </a>EnactTrust</h1>
 
-EnactTrust is a driver to interact with TPM2 devices on IoT devices.
-EnactTrust facilities doing Remote Attestation ProceedureS (RATS, see RFC9334) by collecting Evidence about the state of a device, and relaying that Evidence to a Verifier operated by the device owner, or by EnactTrust.
+EnactTrust performs remote health checks of a device, by collecting Evidence about the state of the device and relaying that Evidence to a Verifier operated by the device owner, or by EnactTrust.
+
+Note: See Remote Attestation ProceedureS (RATS, see RFC9334). EnactTrust enables IoT devices to use TPM2 (Trusted Platform Module 2.0).
 
 # Security and compliance for IoT & Edge systems
 
@@ -11,6 +12,7 @@ Typical use cases are:
 - protection of IoT devices in the field (including offline)
 - monitoring of the device health of Edge devices
 - compliance with IEC 62443 for Industrial IoT systems
+- driver to interact with TPM2 on IoT devices
 
 To learn more about EnactTrust, [read our **whitepaper**](https://enact-public.s3.eu-west-1.amazonaws.com/STMicroelectronics+-+EnactTrust+-+Whitepaper+-+Embedded+World+2022.pdf).
 

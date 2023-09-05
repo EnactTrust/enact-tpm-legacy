@@ -38,7 +38,7 @@
 #define ENACT_API_PEM_ARG_EK    "ek_pub"
 #define ENACT_API_PEM_ARG_AKNAME "ak_name"
 #define ENACT_API_PEM_ARG_EKCERT "ek_cert"
-#define ENACT_API_PEM_ARG_UID   "user_id"
+#define ENACT_API_PEM_ARG_USERID   "user_id"
 #define ENACT_API_PEM_ARG_HOSTNAME "hostname"
 
 #define ENACT_API_GOLDEN_ARG_GOLDEN "golden_blob"
