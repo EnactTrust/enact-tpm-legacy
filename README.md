@@ -1,24 +1,18 @@
-<h1><a href="https://www.enacttrust.com/">
-  <img src="https://blog.enacttrust.com/assets/images/logo/enact-logo.png" width="75px" style="vertical-align:middle" style="float:left">
-</a>EnactTrust</h1>
+
+# Public archive of the legacy version of EnactTrust
 
 EnactTrust performs remote health checks of a device, by collecting Evidence about the state of the device and relaying that Evidence to a Verifier operated by the device owner, or by EnactTrust.
 
-Note: See Remote Attestation ProceedureS (RATS, see RFC9334). EnactTrust enables IoT devices to use TPM2 (Trusted Platform Module 2.0).
-
-# Security and compliance for IoT & Edge systems
+## Security and compliance for IoT & Edge systems
 
 Typical use cases are:
 - protection of IoT devices in the field (including offline)
 - monitoring of the device health of Edge devices
 - compliance with IEC 62443 for Industrial IoT systems
-- driver to interact with TPM2 on IoT devices
-
-To learn more about EnactTrust, [read our **whitepaper**](https://enact-public.s3.eu-west-1.amazonaws.com/STMicroelectronics+-+EnactTrust+-+Whitepaper+-+Embedded+World+2022.pdf).
 
 ## Quick start
 
-Use this [Dockerfile](Dockerfile) to try EnactTrust in 3 minutes. All you need is a unique user id from https://a3s.enacttrust.com and these few commands:
+Use this [Dockerfile](Dockerfile) to try EnactTrust in 3 minutes. All you need is a unique user id from A3S at https://enacttrust.com and these few commands:
 
 ```
 docker build --tag enact .
@@ -34,9 +28,7 @@ To send fresh evidence just execute `enact` without any parameters, because your
 
 ## Screenshots
 
-<a href="https://www.enacttrust.com/ew2022"><img alt="EnactTrust screenshot" src="https://uploads-ssl.webflow.com/62ac647209e552092604784f/62af56eae7ad8f51ef298187_enact-dashboard-ew2022.png"></a>
-
-Explore device health by visiting the [EnactTrust Security Cloud](https://a3s.enacttrust.com).
+<img alt="EnactTrust screenshot" src="enact-tpm-dashboard-ew2022.png">
 
 ## Installation
 
@@ -44,13 +36,11 @@ Please check the [INSTALL.md](INSTALL.md) file for step by step instructions. Sh
 
 1. Git clone this repo
 1. Make
-1. Register at https://a3s.enacttrust.com 
+1. Register with A3S at https://enacttrust.com
 1. enact onboard A3S_USER_ID (get user id from the step above)
 1. enact
 
 If you're familiar with attestation and are comfortable with looking at C code, you can also try out the [**EnactTrust API**](enact-api.c) which is aimed primarily at 3rd party integrations.
-
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/6129df878b364f9ca7c09d72ffe852bf)](https://www.codacy.com/gh/EnactTrust/enact/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=EnactTrust/enact&amp;utm_campaign=Badge_Grade)
 
 ## Requirements
 
@@ -63,13 +53,13 @@ EnactTrust is built for the *IoT & Edge devices* that live in the field for 3/5/
 | Safety-critical (FSM) | Yes          |              |
 | Linux                 | Yes          | Yes          |
 
-Additionally, we aim to support hardware hardening technologies like TrustZone (TF-M & TF-A).
+We also support hardware hardening technologies like ARM's TrustZone (TF-M & TF-A).
 
 ## Built With
 
 The QuickStart version of EnactTrust uses:
 - [wolfTPM](https://github.com/wolfssl/wolfTPM) &mdash; Our QuickStart version uses wolfTPM because it is designed for embedded systems and requires no external dependencies.
-- [libcurl](https://github.com/curl/curl) &mdash; Our agent uses Curl to communicate easily with our cloud server.
+- [libcurl](https://github.com/curl/curl) &mdash; Our QuickStart agent uses Curl to communicate easily with our cloud server.
 
 Let us know if you want access to our **TF-M** and TF-A variant of EnactTrust by sending us an [email](mailto:info@enacttrust.com).
 
@@ -83,15 +73,15 @@ Here is the complete list of EnactTrust versions:
 
 - Quick start - Basic attestation for 1 node (this version).
 - Developer - Advanced attestation for 5 nodes.
-- Enterprise - Protecting IoT products during their entire lifecycle, ZeroTrust security model for critical infrastructure, available on premise and as a managed service, EnactTrust agent deployed in memory isolation to protect the system even in the case of an attack.
+- Enterprise - Protecting IoT products during their entire lifecycle, available on premise and as a managed service, EnactTrust agent is deployed in memory isolation to protect the system even in the case of an attack.
 
 ## History
 
-The original concept of EnactTrust emerged during 2017 and involves the largest trade fair for "Internet of Things" - Embedded World in Nuremberg/Germany. For the very first time there was a dedicated Trusted Platform Module(TPM) track. Presenters included managers from ARM, OnSemi and other industry leaders. Surprisingly, no one from the five speakers talked about Trusted Computing or mentioned the use of TPM 2.0 modules.
+The original concept of EnactTrust emerged during 2017 and involves the largest trade fair for "Internet of Things" - Embedded World in Nuremberg, Germany. For the very first time there was a dedicated Trusted Platform Module(TPM) track. Presenters included managers from ARM, OnSemi and other industry leaders. Surprisingly, no one from the five speakers talked about Trusted Computing or mentioned the use of TPM 2.0 modules.
 
-The capability to build trust into a computer system remained just a marketing slogan in 2017. Therefore, in early 2018 we built the first prototype of what later became known as EnactTrust. It took years of development and testing with interested companies to define the core features and qualities of EnactTrust that we have today.
+The capability to build trust into a computer system remained just a marketing slogan in 2017. Therefore, in early 2018 we built the first prototype of what later became known as EnactTrust. Working with interested parties, we defined the core features and qualities of EnactTrust that we have today.
 
-The current "Quick Start" version of EnactTrust is re-written to use the open-source wolfTPM and libcurl librariers, and targets Linux for ease of use.
+The current "Quick Start" version of EnactTrust is open-source and targets Linux for ease of use.
 
 ## Contact us
 
